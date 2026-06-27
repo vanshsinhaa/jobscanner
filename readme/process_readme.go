@@ -3,6 +3,7 @@ package readme
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,6 +14,11 @@ import (
 // maxTableRows caps the total number of job rows in the README so that it
 // stays under GitHub's 512KB markdown rendering limit (~1700 rows).
 const maxTableRows = 1500
+
+// maxJobAgeDays is the maximum age of a posting to include in the README.
+// Only applies to jobs with a parseable PostedOn. Jobs with "Unknown" dates
+// are always included — we cannot know their age.
+const maxJobAgeDays = 14
 
 // allowedMonths defines which months to keep in the README.
 // Since the README only stores "Mon DD" without a year, we can't distinguish
@@ -47,6 +53,12 @@ func isRowInAllowedMonth(row string) bool {
 			dateStr = col
 			break
 		}
+	}
+
+	// Always keep rows whose date is "Unknown" — job_ids.json already marks them
+	// as seen so they can never be re-added if pruned here.
+	if dateStr == "Unknown" {
+		return true
 	}
 
 	if len(dateStr) < 3 {
@@ -86,14 +98,43 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		return fmt.Errorf("table marker not found")
 	}
 
+	// Sort by posting date, newest first.
+	// Jobs with no parseable PostedOn (Workday "Unknown", etc.) fall to the end.
+	sort.Slice(jobPostings, func(i, j int) bool {
+		ti, oki := parsePostingDate(jobPostings[i].PostedOn)
+		tj, okj := parsePostingDate(jobPostings[j].PostedOn)
+		if !oki && !okj {
+			return false
+		}
+		if !oki {
+			return false // no date → end of list
+		}
+		if !okj {
+			return true
+		}
+		return ti.After(tj)
+	})
+
+	// Drop jobs older than maxJobAgeDays. "Posted 30+ Days Ago" (parsed as 30)
+	// is the primary casualty. Jobs with no parseable date are always kept.
+	cutoff := time.Now().AddDate(0, 0, -maxJobAgeDays)
+	var filteredJobs []common.JobPosting
+	for _, job := range jobPostings {
+		t, ok := parsePostingDate(job.PostedOn)
+		if ok && t.Before(cutoff) {
+			continue
+		}
+		filteredJobs = append(filteredJobs, job)
+	}
+	jobPostings = filteredJobs
+
 	seen := make(map[string]bool)
 
-	// Build new rows from today's scraped jobs
+	// Build new rows using the actual PostedOn value from each scraper.
 	var newRows []string
-	today := time.Now().Format("Jan 02")
 	for _, job := range jobPostings {
 		row := fmt.Sprintf("| **%s** | %s | %s | <a href=\"%s\" target=\"_blank\"><img src=\"https://i.imgur.com/u1KNU8z.png\" width=\"118\" alt=\"Apply\"></a> | %s |",
-			job.Company, job.JobTitle, job.Location, job.ExternalPath, today)
+			job.Company, job.JobTitle, job.Location, job.ExternalPath, displayDate(job.PostedOn))
 		link := extractLink(row)
 		if link != "" && !seen[link] {
 			seen[link] = true
