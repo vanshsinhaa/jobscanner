@@ -13,25 +13,28 @@ import (
 )
 
 const (
-	// maxTableRows caps the general table so the README stays under GitHub's 512KB render limit.
-	maxTableRows = 1500
-	// maxInternTableRows caps the intern/new-grad table separately.
+	maxTableRows       = 1500
 	maxInternTableRows = 500
-	// maxJobAgeDays filters out stale postings with a parseable date.
-	maxJobAgeDays = 14
+	maxJobAgeDays      = 14
 
-	// HTML comment anchors delimiting each table's row section in the README.
-	// replaceSection writes rows between start (inclusive) and end (exclusive),
-	// leaving everything outside the pair untouched.
-	internStartAnchor  = "<!-- intern-table-start -->"
-	internEndAnchor    = "<!-- intern-table-end -->"
-	generalStartAnchor = "<!-- general-table-start -->"
-	generalEndAnchor   = "<!-- general-table-end -->"
+	// Section headers used to locate each table in the README.
+	// The code searches for the table separator row within the bounded region
+	// [sectionHeader, endAnchor) and writes rows immediately after the separator.
+	// This keeps HTML comments OUT of the table body, which is critical:
+	// a comment between the separator row and the first data row breaks GitHub's
+	// markdown table parser and causes all rows to render as prose.
+	internSectionHeader  = "## 🎓 Intern & New Grad Opportunities"
+	generalSectionHeader = "## 💼 All SWE Opportunities"
+
+	// End anchors mark where each table's rows stop.
+	// They appear AFTER the last data row, which ends the table cleanly.
+	internEndAnchor  = "<!-- intern-rows-end -->"
+	generalEndAnchor = "<!-- general-rows-end -->"
+
+	// Standard table separator shared by both tables.
+	tableSep = "| --- | --- | --- | :---: | :---: |"
 )
 
-// allowedMonths controls which existing README rows survive between runs.
-// Rows with a "Mon DD" date whose month is not listed here are pruned.
-// Update this every couple of months (or convert to a rolling window in a future phase).
 var allowedMonths = map[string]bool{
 	"May": true,
 	"Jun": true,
@@ -45,11 +48,11 @@ func ReadMeProcessNewJobs() error {
 	return appendJobsToReadme(jobs)
 }
 
-// isRowInAllowedMonth checks whether an existing table row should be kept between runs.
+// isRowInAllowedMonth decides whether to keep an existing README row between runs.
 // Three date formats can appear in the date column after Phase 2:
-//  1. "Mon DD" (ISO-derived)  → check allowedMonths
-//  2. Workday relative ("Today", "Yesterday", "N Days Ago") → always keep (inherently recent)
-//  3. "Unknown" → always keep (can't determine age; job is already in job_ids.json)
+//  1. "Mon DD" (ISO-derived)        → check allowedMonths map
+//  2. Workday relative ("5 Days Ago", "Today", "Yesterday") → always keep (inherently recent)
+//  3. "Unknown"                     → always keep (age unknowable; job is in job_ids.json)
 func isRowInAllowedMonth(row string) bool {
 	row = strings.TrimSpace(row)
 	if row == "" || !strings.HasPrefix(row, "|") {
@@ -70,7 +73,6 @@ func isRowInAllowedMonth(row string) bool {
 		return true
 	}
 
-	// Workday relative strings are inherently recent — always keep them.
 	lower := strings.ToLower(dateStr)
 	if lower == "today" || lower == "yesterday" || strings.Contains(lower, "days ago") {
 		return true
@@ -82,7 +84,7 @@ func isRowInAllowedMonth(row string) bool {
 	return allowedMonths[dateStr[:3]]
 }
 
-// extractLink pulls the href URL out of a table row, used as the dedup key.
+// extractLink pulls the href URL from a table row for use as a dedup key.
 func extractLink(row string) string {
 	idx := strings.Index(row, "href=\"")
 	if idx == -1 {
@@ -96,9 +98,8 @@ func extractLink(row string) string {
 	return row[start : start+end]
 }
 
-// extractTitle pulls the job title column from a markdown table row.
+// extractTitle gets the job title column from a markdown table row.
 // Row format: | **Company** | Job Title | Location | Link | Date |
-// After splitting on "|": ["", " **Company** ", " Job Title ", ...]
 func extractTitle(row string) string {
 	cols := strings.Split(row, "|")
 	if len(cols) < 3 {
@@ -107,39 +108,62 @@ func extractTitle(row string) string {
 	return strings.TrimSpace(cols[2])
 }
 
-// replaceSection replaces the content between startAnchor and endAnchor with rows.
-// Everything outside the anchor pair is left exactly as-is.
-func replaceSection(content, startAnchor, endAnchor string, rows []string) (string, error) {
-	si := strings.Index(content, startAnchor)
-	ei := strings.Index(content, endAnchor)
+// replaceSection writes rows into a table identified by its section header.
+// It finds the tableSep within [sectionHeader, endAnchor), then replaces
+// everything between the separator and the end anchor with the given rows.
+// The separator row itself and everything before it are left untouched.
+func replaceSection(content, sectionHeader, endAnchor string, rows []string) (string, error) {
+	si := strings.Index(content, sectionHeader)
 	if si == -1 {
-		return "", fmt.Errorf("start anchor %q not found in README", startAnchor)
-	}
-	if ei == -1 {
-		return "", fmt.Errorf("end anchor %q not found in README", endAnchor)
+		return "", fmt.Errorf("section header %q not found", sectionHeader)
 	}
 
+	// Work within the region starting at si to avoid matching the wrong table.
+	rest := content[si:]
+	ei := strings.Index(rest, endAnchor)
+	if ei == -1 {
+		return "", fmt.Errorf("end anchor %q not found after section %q", endAnchor, sectionHeader)
+	}
+
+	// Find the separator row inside this section (before end anchor).
+	sepi := strings.Index(rest[:ei], tableSep)
+	if sepi == -1 {
+		return "", fmt.Errorf("table separator not found in section %q", sectionHeader)
+	}
+
+	// Write point: the character immediately after the separator row.
+	writeAt := si + sepi + len(tableSep)
+
 	var sb strings.Builder
-	sb.WriteString(content[:si+len(startAnchor)])
+	sb.WriteString(content[:writeAt])
 	sb.WriteString("\n")
 	for _, row := range rows {
 		sb.WriteString(row)
 		sb.WriteString("\n")
 	}
-	sb.WriteString(content[ei:])
+	// Resume from the end anchor (inclusive) so it is preserved in the output.
+	sb.WriteString(rest[ei:])
 	return sb.String(), nil
 }
 
-// parseExistingRows reads table rows from between the given anchors.
-// Applies the allowed-month filter and deduplicates against seen.
-// Used for the intern table, whose rows are already correctly classified.
-func parseExistingRows(content, startAnchor, endAnchor string, seen map[string]bool) []string {
-	si := strings.Index(content, startAnchor)
-	ei := strings.Index(content, endAnchor)
-	if si == -1 || ei == -1 || ei <= si {
+// parseExistingRows extracts table rows from between a section's separator row
+// and its end anchor. Applies the allowed-month filter and deduplicates against seen.
+func parseExistingRows(content, sectionHeader, endAnchor string, seen map[string]bool) []string {
+	si := strings.Index(content, sectionHeader)
+	if si == -1 {
 		return nil
 	}
-	section := content[si+len(startAnchor) : ei]
+	rest := content[si:]
+	ei := strings.Index(rest, endAnchor)
+	if ei == -1 {
+		return nil
+	}
+	sepi := strings.Index(rest[:ei], tableSep)
+	if sepi == -1 {
+		return nil
+	}
+	section := rest[sepi+len(tableSep) : ei]
+
 	var kept []string
 	for _, line := range strings.Split(section, "\n") {
 		trimmed := strings.TrimSpace(line)
@@ -161,17 +185,26 @@ func parseExistingRows(content, startAnchor, endAnchor string, seen map[string]b
 	return kept
 }
 
-// parseAndReclassifyGeneralRows reads existing general table rows and re-classifies each one.
-// Any row whose title now matches intern/new-grad keywords is returned in the intern slice
-// so it gets moved to the intern table. This handles the one-time migration from the
-// old single-table format and also self-corrects as keywords evolve.
+// parseAndReclassifyGeneralRows reads existing general table rows and re-classifies
+// each one by title. Any row matching intern/new-grad keywords is returned in the
+// intern slice so it gets moved to the intern table. This handles the self-healing
+// migration from the old single-table format and future keyword updates automatically.
 func parseAndReclassifyGeneralRows(content string, seen map[string]bool) (intern, general []string) {
-	si := strings.Index(content, generalStartAnchor)
-	ei := strings.Index(content, generalEndAnchor)
-	if si == -1 || ei == -1 || ei <= si {
+	si := strings.Index(content, generalSectionHeader)
+	if si == -1 {
 		return nil, nil
 	}
-	section := content[si+len(generalStartAnchor) : ei]
+	rest := content[si:]
+	ei := strings.Index(rest, generalEndAnchor)
+	if ei == -1 {
+		return nil, nil
+	}
+	sepi := strings.Index(rest[:ei], tableSep)
+	if sepi == -1 {
+		return nil, nil
+	}
+	section := rest[sepi+len(tableSep) : ei]
+
 	for _, line := range strings.Split(section, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" || !strings.HasPrefix(trimmed, "|") {
@@ -219,8 +252,7 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		return ti.After(tj)
 	})
 
-	// Drop jobs older than maxJobAgeDays. "Posted 30+ Days Ago" is the primary casualty.
-	// Jobs with no parseable date are always kept — we can't know their age.
+	// Drop jobs older than maxJobAgeDays. Jobs without a parseable date always pass.
 	cutoff := time.Now().AddDate(0, 0, -maxJobAgeDays)
 	var filtered []common.JobPosting
 	for _, job := range jobPostings {
@@ -254,14 +286,13 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		}
 	}
 
-	// Existing intern table rows are already correctly classified — keep as-is.
-	keptInternRows := parseExistingRows(content, internStartAnchor, internEndAnchor, seen)
+	// Existing intern rows are already correctly classified — keep as-is.
+	keptInternRows := parseExistingRows(content, internSectionHeader, internEndAnchor, seen)
 
-	// Re-classify existing general table rows. Any that now match intern/new-grad keywords
-	// (e.g., rows written before two-table migration) are moved to the intern table.
+	// Re-classify existing general rows; move any intern/new-grad into the intern table.
 	reclassifiedIntern, keptGeneralRows := parseAndReclassifyGeneralRows(content, seen)
 
-	// Merge new + kept for each table, newest-scraped rows first, capped separately.
+	// Merge new + kept for each table, newest rows first, capped separately.
 	internRows := append(append(newInternRows, keptInternRows...), reclassifiedIntern...)
 	if len(internRows) > maxInternTableRows {
 		internRows = internRows[:maxInternTableRows]
@@ -276,13 +307,12 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		return nil
 	}
 
-	// Write intern table rows between their anchors.
-	content, err = replaceSection(content, internStartAnchor, internEndAnchor, internRows)
+	content, err = replaceSection(content, internSectionHeader, internEndAnchor, internRows)
 	if err != nil {
 		return fmt.Errorf("intern table: %w", err)
 	}
-	// Write general table rows (re-find anchors in the now-updated content string).
-	content, err = replaceSection(content, generalStartAnchor, generalEndAnchor, generalRows)
+	// Re-search anchors in the updated content string before writing general table.
+	content, err = replaceSection(content, generalSectionHeader, generalEndAnchor, generalRows)
 	if err != nil {
 		return fmt.Errorf("general table: %w", err)
 	}
