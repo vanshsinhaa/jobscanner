@@ -1,4 +1,4 @@
-package sites
+﻿package sites
 
 import (
 	"compress/gzip"
@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 type TeslaMain struct {

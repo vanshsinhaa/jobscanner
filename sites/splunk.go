@@ -1,11 +1,11 @@
-package sites
+﻿package sites
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 type SplunkMain struct {

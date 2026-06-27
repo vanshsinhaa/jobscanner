@@ -1,4 +1,4 @@
-package sites
+﻿package sites
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 type AmexMain struct {

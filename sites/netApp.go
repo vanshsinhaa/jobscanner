@@ -1,11 +1,11 @@
-package sites
+﻿package sites
 
 import (
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 	"golang.org/x/net/html"
 )
 

@@ -1,11 +1,11 @@
-package process
+﻿package process
 
 import (
 	"fmt"
 
-	"github.com/neyaadeez/go-get-jobs/common"
-	"github.com/neyaadeez/go-get-jobs/workday"
-	workdaymain "github.com/neyaadeez/go-get-jobs/workday_main"
+	"github.com/vanshsinhaa/jobscanner/common"
+	"github.com/vanshsinhaa/jobscanner/workday"
+	workdaymain "github.com/vanshsinhaa/jobscanner/workday_main"
 )
 
 func GetAllWorkdayJobs() ([]common.JobPosting, error) {

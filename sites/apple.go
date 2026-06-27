@@ -1,4 +1,4 @@
-package sites
+﻿package sites
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 func GetAppleJobs() ([]common.JobPosting, error) {

@@ -1,6 +1,6 @@
-package workdaymain
+﻿package workdaymain
 
-import "github.com/neyaadeez/go-get-jobs/common"
+import "github.com/vanshsinhaa/jobscanner/common"
 
 var WorkdayPayloads = map[string]common.WorkdayPayload{}
 

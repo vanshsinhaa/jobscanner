@@ -1,4 +1,4 @@
-package sites
+﻿package sites
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 func GetGoogleJobs() ([]common.JobPosting, error) {

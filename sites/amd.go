@@ -1,10 +1,10 @@
-package sites
+﻿package sites
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 type AMDMain struct {

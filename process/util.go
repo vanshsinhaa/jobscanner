@@ -1,10 +1,10 @@
-package process
+﻿package process
 
 import (
 	"encoding/json"
 	"os"
 
-	commonconst "github.com/neyaadeez/go-get-jobs/common_const"
+	commonconst "github.com/vanshsinhaa/jobscanner/common_const"
 )
 
 func loadJobIDs() (map[string]struct{}, error) {

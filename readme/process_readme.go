@@ -1,4 +1,4 @@
-package readme
+﻿package readme
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neyaadeez/go-get-jobs/common"
-	"github.com/neyaadeez/go-get-jobs/database"
-	"github.com/neyaadeez/go-get-jobs/process"
+	"github.com/vanshsinhaa/jobscanner/common"
+	"github.com/vanshsinhaa/jobscanner/database"
+	"github.com/vanshsinhaa/jobscanner/process"
 )
 
 const (
@@ -23,8 +23,8 @@ const (
 	// This keeps HTML comments OUT of the table body, which is critical:
 	// a comment between the separator row and the first data row breaks GitHub's
 	// markdown table parser and causes all rows to render as prose.
-	internSectionHeader  = "## 🎓 Intern & New Grad Opportunities"
-	generalSectionHeader = "## 💼 All SWE Opportunities"
+	internSectionHeader  = "## ðŸŽ“ Intern & New Grad Opportunities"
+	generalSectionHeader = "## ðŸ’¼ All SWE Opportunities"
 
 	// End anchors mark where each table's rows stop.
 	// They appear AFTER the last data row, which ends the table cleanly.
@@ -50,9 +50,9 @@ func ReadMeProcessNewJobs() error {
 
 // isRowInAllowedMonth decides whether to keep an existing README row between runs.
 // Three date formats can appear in the date column after Phase 2:
-//  1. "Mon DD" (ISO-derived)        → check allowedMonths map
-//  2. Workday relative ("5 Days Ago", "Today", "Yesterday") → always keep (inherently recent)
-//  3. "Unknown"                     → always keep (age unknowable; job is in job_ids.json)
+//  1. "Mon DD" (ISO-derived)        â†’ check allowedMonths map
+//  2. Workday relative ("5 Days Ago", "Today", "Yesterday") â†’ always keep (inherently recent)
+//  3. "Unknown"                     â†’ always keep (age unknowable; job is in job_ids.json)
 func isRowInAllowedMonth(row string) bool {
 	row = strings.TrimSpace(row)
 	if row == "" || !strings.HasPrefix(row, "|") {
@@ -286,7 +286,7 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		}
 	}
 
-	// Existing intern rows are already correctly classified — keep as-is.
+	// Existing intern rows are already correctly classified â€” keep as-is.
 	keptInternRows := parseExistingRows(content, internSectionHeader, internEndAnchor, seen)
 
 	// Re-classify existing general rows; move any intern/new-grad into the intern table.

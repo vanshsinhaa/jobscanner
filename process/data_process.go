@@ -1,14 +1,14 @@
-package process
+﻿package process
 
 import (
 	"fmt"
 	"sync"
 
-	"github.com/neyaadeez/go-get-jobs/common"
-	"github.com/neyaadeez/go-get-jobs/database"
-	sitesmain "github.com/neyaadeez/go-get-jobs/sites_main"
-	"github.com/neyaadeez/go-get-jobs/workday"
-	workdaymain "github.com/neyaadeez/go-get-jobs/workday_main"
+	"github.com/vanshsinhaa/jobscanner/common"
+	"github.com/vanshsinhaa/jobscanner/database"
+	sitesmain "github.com/vanshsinhaa/jobscanner/sites_main"
+	"github.com/vanshsinhaa/jobscanner/workday"
+	workdaymain "github.com/vanshsinhaa/jobscanner/workday_main"
 )
 
 var (

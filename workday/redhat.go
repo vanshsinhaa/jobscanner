@@ -1,8 +1,8 @@
-package workday
+﻿package workday
 
 import (
-	"github.com/neyaadeez/go-get-jobs/common"
-	workdaymain "github.com/neyaadeez/go-get-jobs/workday_main"
+	"github.com/vanshsinhaa/jobscanner/common"
+	workdaymain "github.com/vanshsinhaa/jobscanner/workday_main"
 )
 
 func init() {

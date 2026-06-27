@@ -1,10 +1,10 @@
-package main
+﻿package main
 
 import (
 	"fmt"
 
-	"github.com/neyaadeez/go-get-jobs/process"
-	"github.com/neyaadeez/go-get-jobs/readme"
+	"github.com/vanshsinhaa/jobscanner/process"
+	"github.com/vanshsinhaa/jobscanner/readme"
 )
 
 func processTodaysJobsDBAndReadme() {

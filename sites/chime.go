@@ -1,4 +1,4 @@
-package sites
+﻿package sites
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 func GetChimeJobs() ([]common.JobPosting, error) {

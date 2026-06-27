@@ -1,4 +1,4 @@
-module github.com/neyaadeez/go-get-jobs
+module github.com/vanshsinhaa/jobscanner
 
 go 1.25.0
 

@@ -1,4 +1,4 @@
-package sites
+﻿package sites
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 type MetaMain struct {

@@ -1,4 +1,4 @@
-package workdaymain
+﻿package workdaymain
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 // @Description: Fetches page 0 to get first 20 jobs + the total count

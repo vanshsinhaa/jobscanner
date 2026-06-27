@@ -1,10 +1,10 @@
-package sitesmain
+﻿package sitesmain
 
 import (
 	"fmt"
 
-	"github.com/neyaadeez/go-get-jobs/common"
-	"github.com/neyaadeez/go-get-jobs/sites"
+	"github.com/vanshsinhaa/jobscanner/common"
+	"github.com/vanshsinhaa/jobscanner/sites"
 )
 
 // New function to fetch jobs based on company name

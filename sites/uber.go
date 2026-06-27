@@ -1,11 +1,11 @@
-package sites
+﻿package sites
 
 import (
 	"encoding/json"
 	"fmt"
 	"strconv"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 // UberMain represents the main structure of the Uber job API response.

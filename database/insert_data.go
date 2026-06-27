@@ -1,9 +1,9 @@
-package database
+﻿package database
 
 import (
 	"fmt"
 
-	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/vanshsinhaa/jobscanner/common"
 )
 
 // InsertIntoDB inserts job postings into SQLite.

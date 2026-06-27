@@ -1,6 +1,6 @@
-package process
+﻿package process
 
-import "github.com/neyaadeez/go-get-jobs/common"
+import "github.com/vanshsinhaa/jobscanner/common"
 
 func processDublicateJobs(jobs []common.JobPosting) ([]common.JobPosting, error) {
 	jobIDSet, err := loadJobIDs()

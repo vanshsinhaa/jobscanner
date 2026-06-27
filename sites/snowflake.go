@@ -1,4 +1,4 @@
-package sites
+﻿package sites
 
 import (
 	"encoding/json"
@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/neyaadeez/go-get-jobs/common"
-	commonconst "github.com/neyaadeez/go-get-jobs/common_const"
+	"github.com/vanshsinhaa/jobscanner/common"
+	commonconst "github.com/vanshsinhaa/jobscanner/common_const"
 )
 
 type SnowflakeMain struct {
