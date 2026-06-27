@@ -25,11 +25,11 @@ func ProcessJobsWithDB() error {
 	}
 	fmt.Println("Processed Jobs (New Jobs): ", len(jobs))
 
-	// err = database.InsertIntoDB(jobs)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return err
-	// }
+	err = database.InsertIntoDB(jobs)
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
 
 	return nil
 }

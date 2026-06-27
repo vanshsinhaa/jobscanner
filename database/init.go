@@ -1,52 +1,45 @@
 package database
 
 import (
-	"context"
+	"database/sql"
 	"log"
-	"os"
 	"sync"
-	"time"
 
-	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	_ "modernc.org/sqlite"
 )
 
 var (
-	dbOnce   sync.Once
-	dbClient *mongo.Client
+	dbOnce sync.Once
+	db     *sql.DB
 )
 
-// GetDBClient returns a singleton MongoDB client
-func GetDBClient() *mongo.Client {
+// GetDB returns the singleton SQLite connection.
+// The database file is created at local_data/jobs.db relative to the working directory.
+func GetDB() *sql.DB {
 	dbOnce.Do(func() {
-		err := godotenv.Load()
+		var err error
+		db, err = sql.Open("sqlite", "local_data/jobs.db")
 		if err != nil {
-			log.Fatal("Error loading .env file")
+			log.Fatal("failed to open SQLite db:", err)
 		}
-
-		mongoURI := os.Getenv("mongo_db_connection_string")
-		if mongoURI == "" {
-			log.Fatal("MONGODB_URI is not set in the environment")
+		if err = initSchema(db); err != nil {
+			log.Fatal("failed to initialize schema:", err)
 		}
-
-		clientOptions := options.Client().ApplyURI(mongoURI)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		client, err := mongo.Connect(ctx, clientOptions)
-		if err != nil {
-			log.Fatal("Error connecting to MongoDB: ", err)
-		}
-
-		err = client.Ping(ctx, nil)
-		if err != nil {
-			log.Fatal("Couldn't ping MongoDB: ", err)
-		}
-
-		dbClient = client
 	})
+	return db
+}
 
-	return dbClient
+func initSchema(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS jobs (
+		id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+		company      TEXT     NOT NULL,
+		job_id       TEXT     NOT NULL UNIQUE,
+		title        TEXT     NOT NULL,
+		location     TEXT,
+		posted_on    TEXT,
+		external_url TEXT     NOT NULL,
+		role_type    TEXT     NOT NULL DEFAULT 'general',
+		inserted_on  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`)
+	return err
 }

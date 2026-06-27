@@ -1,89 +1,62 @@
 package database
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/neyaadeez/go-get-jobs/common"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func InsertIntoDB(jobPostings []common.JobPosting) error {
-	client := GetDBClient()
-	if client == nil {
-		return fmt.Errorf("error: unable to get db client connection")
-	}
+// InsertIntoDB inserts job postings into SQLite.
+// Duplicate job_id values are silently ignored via INSERT OR IGNORE.
+func InsertIntoDB(jobs []common.JobPosting) error {
+	db := GetDB()
 
-	database := client.Database("jobsDB")
-	collection := database.Collection("jobsCollection")
-
-	return InsertNewJobPostings(collection, jobPostings)
-}
-
-func InsertNewJobPostings(collection *mongo.Collection, jobPostings []common.JobPosting) error {
-	for _, job := range jobPostings {
-		doc := bson.M{
-			"company":       job.Company,
-			"jobId":         job.JobId,
-			"title":         job.JobTitle,
-			"locationsText": job.Location,
-			"postedOn":      job.PostedOn,
-			"externalPath":  job.ExternalPath,
-			"insertedOn":    time.Now(),
-		}
-
-		_, err := collection.InsertOne(context.TODO(), doc)
-		if err != nil {
-			if mongo.IsDuplicateKeyError(err) {
-				fmt.Println(err.Error())
-				continue
-			} else {
-				return fmt.Errorf("error while inserting data into db: %v", err.Error())
-			}
-		}
-	}
-
-	return nil
-}
-
-func DeleteJobsFromDB(jobPostings []common.JobPosting) error {
-	client := GetDBClient()
-	if client == nil {
-		return fmt.Errorf("error: unable to get db client connection")
-	}
-
-	database := client.Database("jobsDB")
-	collection := database.Collection("jobsCollection")
-
-	var err error
-	for _, job := range jobPostings {
-		er := deleteJobById(collection, job.JobId)
-		if er != nil {
-			err = er
-		}
-	}
-
+	stmt, err := db.Prepare(`INSERT OR IGNORE INTO jobs
+		(company, job_id, title, location, posted_on, external_url, role_type)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to prepare insert statement: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, j := range jobs {
+		roleType := ClassifyRole(j.JobTitle)
+
+		var postedOn interface{}
+		if j.PostedOn != "" {
+			postedOn = j.PostedOn
+		}
+
+		if _, err := stmt.Exec(
+			j.Company,
+			j.JobId,
+			j.JobTitle,
+			j.Location,
+			postedOn,
+			j.ExternalPath,
+			roleType,
+		); err != nil {
+			fmt.Printf("warn: failed to insert job %s: %v\n", j.JobId, err)
+		}
 	}
 
 	return nil
 }
 
-func deleteJobById(collection *mongo.Collection, jobId string) error {
-	filter := bson.M{"jobId": jobId}
-
-	result, err := collection.DeleteOne(context.TODO(), filter)
+// DeleteJobFromDB removes a single job by its job_id.
+func DeleteJobFromDB(jobId string) error {
+	db := GetDB()
+	res, err := db.Exec(`DELETE FROM jobs WHERE job_id = ?`, jobId)
 	if err != nil {
-		return fmt.Errorf("error while deleting job from db: %v", err)
+		return fmt.Errorf("failed to delete job %s: %w", jobId, err)
 	}
-
-	if result.DeletedCount == 0 {
-		return fmt.Errorf("no job found with jobId: %s", jobId)
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("no job found with job_id: %s", jobId)
 	}
-
-	fmt.Printf("Successfully deleted job with jobId: %s\n", jobId)
+	fmt.Printf("deleted job %s\n", jobId)
 	return nil
 }
+
+// ClassifyRole stub — replaced by database/classify.go in Phase 3.
+func ClassifyRole(title string) string { return "general" }
