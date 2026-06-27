@@ -10,6 +10,10 @@ import (
 	"github.com/neyaadeez/go-get-jobs/common"
 )
 
+// @Description: Fetches page 0 to get first 20 jobs + the total count
+// 				 Calculates how many more pages exist using loop = Total pages / 20
+
+
 func GetWorkdayJobs(workdayPayload common.WorkdayPayload) ([]common.JobPosting, error) {
 	fmt.Println("Processing: ", workdayPayload.Company)
 	var wg sync.WaitGroup
