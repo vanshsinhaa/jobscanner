@@ -1,21 +1,26 @@
 package database
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
+
+// internRe uses word boundaries to match intern/co-op keywords as complete words.
+// This prevents false positives from substrings: "International" and "Internal"
+// contain "intern" but do NOT match \bintern\b because the next char is a word char.
+var internRe = regexp.MustCompile(`(?i)\b(intern|internship|co-op|coop|co op)\b`)
 
 // ClassifyRole returns "intern", "new_grad", or "general" based on job title keywords.
-// Called at insert time to tag each row in the DB, and again in the README writer
-// to partition intern/new-grad rows to the top of the table.
+// Called at insert time (database/insert_data.go) and at display time (readme/process_readme.go).
 func ClassifyRole(title string) string {
-	t := strings.ToLower(title)
-
-	for _, kw := range []string{"intern", "internship", "co-op", "coop", "co op"} {
-		if strings.Contains(t, kw) {
-			return "intern"
-		}
+	if internRe.MatchString(title) {
+		return "intern"
 	}
 
+	t := strings.ToLower(title)
+
 	// Compound phrases only — "associate" and "junior" alone produce too many false positives
-	// (e.g., "Associate Product Manager" at senior level, "Junior" meaning 5+ YOE in some regions).
+	// ("Associate Product Manager" at senior level, "Junior" = 5+ YOE in some regions).
 	for _, kw := range []string{
 		"new grad", "new graduate",
 		"entry level", "entry-level",
