@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/neyaadeez/go-get-jobs/common"
+	"github.com/neyaadeez/go-get-jobs/database"
 	"github.com/neyaadeez/go-get-jobs/process"
 )
 
@@ -127,6 +128,18 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		filteredJobs = append(filteredJobs, job)
 	}
 	jobPostings = filteredJobs
+
+	// Stable partition: intern/new-grad rows first (date-sorted within group),
+	// general roles after. The date sort ran above, so order within each group is preserved.
+	var priorityJobs, generalJobs []common.JobPosting
+	for _, job := range jobPostings {
+		if rt := database.ClassifyRole(job.JobTitle); rt == "intern" || rt == "new_grad" {
+			priorityJobs = append(priorityJobs, job)
+		} else {
+			generalJobs = append(generalJobs, job)
+		}
+	}
+	jobPostings = append(priorityJobs, generalJobs...)
 
 	seen := make(map[string]bool)
 

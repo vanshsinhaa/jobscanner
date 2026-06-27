@@ -57,6 +57,3 @@ func DeleteJobFromDB(jobId string) error {
 	fmt.Printf("deleted job %s\n", jobId)
 	return nil
 }
-
-// ClassifyRole stub — replaced by database/classify.go in Phase 3.
-func ClassifyRole(title string) string { return "general" }
