@@ -18,8 +18,8 @@ const maxTableRows = 1500
 // Since the README only stores "Mon DD" without a year, we can't distinguish
 // years reliably. Set this to the months you want to retain.
 var allowedMonths = map[string]bool{
-	"Feb": true,
-	"Mar": true,
+	"May": true,
+	"Jun": true,
 }
 
 func ReadMeProcessNewJobs() error {
