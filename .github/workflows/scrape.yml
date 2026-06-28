@@ -12,21 +12,23 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout dev repo (scraper code)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           path: scraper
 
       - name: Checkout jobs repo (public data)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           repository: vanshsinhaa/jobs
           token: ${{ secrets.JOBS_REPO_TOKEN }}
           path: jobs
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.5.0
         with:
           go-version-file: scraper/go.mod
           cache-dependency-path: scraper/go.sum
