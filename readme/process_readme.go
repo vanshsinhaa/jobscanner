@@ -247,7 +247,7 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 	if err != nil {
 		return fmt.Errorf("error reading README: %v", err)
 	}
-	content := string(file)
+	content := strings.ReplaceAll(string(file), "\xEF\xBB\xBF", "")
 
 	// Sort newest-first; jobs with no parseable date fall to the end.
 	sort.Slice(jobPostings, func(i, j int) bool {

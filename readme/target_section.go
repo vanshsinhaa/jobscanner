@@ -9,6 +9,7 @@ import (
 	"github.com/vanshsinhaa/jobscanner/database"
 )
 
+
 const (
 	targetSectionHeader = "## \U0001f3af My Target Companies"
 	targetEndAnchor     = "<!-- target-rows-end -->"
@@ -54,7 +55,7 @@ func WriteTargetCompanySection() error {
 	if err != nil {
 		return fmt.Errorf("target section: read README: %w", err)
 	}
-	content := string(data)
+	content := strings.ReplaceAll(string(data), "\xEF\xBB\xBF", "")
 
 	if !strings.Contains(content, targetEndAnchor) {
 		content = insertTargetSection(content)
