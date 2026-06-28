@@ -41,5 +41,11 @@ func initSchema(db *sql.DB) error {
 		role_type    TEXT     NOT NULL DEFAULT 'general',
 		inserted_on  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS target_companies (
+		name TEXT PRIMARY KEY
+	)`)
 	return err
 }

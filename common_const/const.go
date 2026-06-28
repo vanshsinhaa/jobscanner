@@ -28,3 +28,4 @@ func JobIdFile() string                   { return filepath.Join(DataDir(), "job
 func SnowflakeHiringManagersFile() string { return filepath.Join(DataDir(), "snowflake.json") }
 func DBPath() string                      { return filepath.Join(DataDir(), "jobs.db") }
 func JSONExportPath() string              { return filepath.Join(DataDir(), "jobs.json") }
+func TargetCompaniesFile() string         { return filepath.Join(DataDir(), "target_companies.json") }

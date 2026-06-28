@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/vanshsinhaa/jobscanner/database"
@@ -13,17 +14,23 @@ import (
 )
 
 var (
-	watchMode bool
-	interval  time.Duration
+	watchMode    bool
+	interval     time.Duration
+	targetReport bool
 )
 
 func init() {
 	flag.BoolVar(&watchMode, "watch", false, "run in daemon mode, polling on interval")
 	flag.DurationVar(&interval, "interval", 15*time.Minute, "polling interval for watch mode")
+	flag.BoolVar(&targetReport, "target-report", false, "print target company coverage for the last 7 days and exit")
 }
 
 func main() {
 	flag.Parse()
+	if targetReport {
+		runTargetReport()
+		return
+	}
 	if watchMode {
 		runWatchMode(interval)
 		return
@@ -47,6 +54,9 @@ func runOnce() {
 
 	if err := database.ExportJSON(); err != nil {
 		fmt.Println("warn: json export failed:", err)
+	}
+	if err := readme.WriteTargetCompanySection(); err != nil {
+		fmt.Println("warn: target section failed:", err)
 	}
 	if err := notify.SendCISummary(newJobs, os.Getenv("DISCORD_WEBHOOK_URL")); err != nil {
 		fmt.Println("warn: discord notify failed:", err)
@@ -78,10 +88,43 @@ func runWatchMode(d time.Duration) {
 		if err := database.ExportJSON(); err != nil {
 			fmt.Println("warn: json export failed:", err)
 		}
+		if err := readme.WriteTargetCompanySection(); err != nil {
+			fmt.Println("warn: target section failed:", err)
+		}
 		if err := notify.SendWatchAlert(jobs, os.Getenv("DISCORD_WEBHOOK_URL")); err != nil {
 			fmt.Println("warn: discord notify failed:", err)
 		}
 
 		time.Sleep(d)
+	}
+}
+
+func runTargetReport() {
+	targets, err := database.LoadTargetCompanies()
+	if err != nil {
+		fmt.Println("error loading target companies:", err)
+		return
+	}
+	if len(targets) == 0 {
+		fmt.Println("No target companies configured. Create local_data/target_companies.json with a JSON array of company names.")
+		return
+	}
+	if err := database.SyncTargetCompanies(targets); err != nil {
+		fmt.Println("error syncing target companies:", err)
+		return
+	}
+	report, err := database.TargetCompanyReport()
+	if err != nil {
+		fmt.Println("error running target report:", err)
+		return
+	}
+	fmt.Printf("\n%-30s  %9s  %s\n", "Company", "Jobs (7d)", "Last Seen")
+	fmt.Println(strings.Repeat("-", 62))
+	for _, r := range report {
+		lastSeen := "never"
+		if r.LastSeen != "" {
+			lastSeen = r.LastSeen
+		}
+		fmt.Printf("%-30s  %9d  %s\n", r.Name, r.JobsFound, lastSeen)
 	}
 }
