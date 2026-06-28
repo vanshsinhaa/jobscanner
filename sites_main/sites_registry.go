@@ -24,8 +24,6 @@ func FetchJobsByCompany(company string) ([]common.JobPosting, error) {
 		return sites.GetTeslaJobs()
 	case common.Chime:
 		return sites.GetChimeJobs()
-	case common.Splunk:
-		return sites.GetSplunkJobs()
 	case common.Visa:
 		return sites.GetVisaJobs()
 	case common.Uber:

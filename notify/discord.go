@@ -14,6 +14,8 @@ import (
 
 // SendCISummary posts one batch summary embed per CI run.
 // Silent when webhookURL is empty or no new jobs were found.
+// ≤5 new jobs: per-job embeds with clickable apply links.
+// >5 new jobs: summary embed + compact list embeds by category.
 func SendCISummary(newJobs []common.JobPosting, webhookURL string) error {
 	if webhookURL == "" {
 		return nil
@@ -29,19 +31,32 @@ func SendCISummary(newJobs []common.JobPosting, webhookURL string) error {
 		})
 	}
 
-	var internJobs []common.JobPosting
+	var internJobs, generalJobs []common.JobPosting
 	for _, j := range newJobs {
 		if rt := database.ClassifyRole(j.JobTitle); rt == "intern" || rt == "new_grad" {
 			internJobs = append(internJobs, j)
+		} else {
+			generalJobs = append(generalJobs, j)
 		}
 	}
-	generalCount := len(newJobs) - len(internJobs)
 
-	embeds := []map[string]any{buildSummaryEmbed(len(newJobs), len(internJobs), generalCount)}
+	// Few jobs: show each one with a clickable apply link.
+	if len(newJobs) <= 5 {
+		var embeds []map[string]any
+		for _, j := range newJobs {
+			embeds = append(embeds, buildJobEmbed(j))
+		}
+		return post(webhookURL, map[string]any{"embeds": embeds})
+	}
+
+	// Many jobs: summary counts + compact list per category.
+	embeds := []map[string]any{buildSummaryEmbed(len(newJobs), len(internJobs), len(generalJobs))}
 	if len(internJobs) > 0 {
 		embeds = append(embeds, buildInternListEmbed(internJobs))
 	}
-
+	if len(generalJobs) > 0 {
+		embeds = append(embeds, buildGeneralListEmbed(generalJobs))
+	}
 	return post(webhookURL, map[string]any{"embeds": embeds})
 }
 
@@ -102,6 +117,23 @@ func buildInternListEmbed(jobs []common.JobPosting) map[string]any {
 	return map[string]any{
 		"title":       "New intern / new-grad openings",
 		"color":       0x5865F2,
+		"description": strings.Join(lines, "\n"),
+	}
+}
+
+func buildGeneralListEmbed(jobs []common.JobPosting) map[string]any {
+	const max = 10
+	var lines []string
+	for i, j := range jobs {
+		if i >= max {
+			lines = append(lines, fmt.Sprintf("*+%d more*", len(jobs)-max))
+			break
+		}
+		lines = append(lines, fmt.Sprintf("**%s** — %s", j.Company, j.JobTitle))
+	}
+	return map[string]any{
+		"title":       "New general SWE openings",
+		"color":       0xE67E22,
 		"description": strings.Join(lines, "\n"),
 	}
 }

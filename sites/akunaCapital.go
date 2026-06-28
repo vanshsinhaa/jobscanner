@@ -1,58 +1,50 @@
-﻿package sites
+package sites
 
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"strings"
 
 	"github.com/vanshsinhaa/jobscanner/common"
 )
 
-type AkunaMain struct {
-	MatchedJobs      []AkunaMatchedJob `json:"matched_jobs"`
-	SpecialtyFilters []string          `json:"specialty_filters"`
+type akunaGreenhouseResponse struct {
+	Jobs []akunaGreenhouseJob `json:"jobs"`
 }
 
-type AkunaMatchedJob struct {
-	Location    []string `json:"location"`
-	Experience  string   `json:"experience"`
-	Type        string   `json:"type"`
-	Name        string   `json:"name"`
-	ID          int64    `json:"id"`
-	Specialties []string `json:"specialties"`
-	Department  []string `json:"department"`
+type akunaGreenhouseJob struct {
+	ID          int64  `json:"id"`
+	Title       string `json:"title"`
+	AbsoluteURL string `json:"absolute_url"`
+	Location    struct {
+		Name string `json:"name"`
+	} `json:"location"`
+	FirstPublished string `json:"first_published"`
 }
 
 func GetAkunaCapitalJobs() ([]common.JobPosting, error) {
 	fmt.Println("Processing: ", "Akuna Capital")
 	client := common.GetClient()
 
-	url := "https://akunacapital.com/wp-admin/admin-ajax.php?action=gh_ajax_request&experience=&department=Development&location=Chicago&search_term="
-
-	resp, err := client.R().Get(url)
+	resp, err := client.R().Get("https://boards-api.greenhouse.io/v1/boards/akunacapital/jobs")
 	if err != nil {
-		return nil, fmt.Errorf("error creating API request(akuna capital jobs): %v", err)
+		return nil, fmt.Errorf("error fetching Akuna Capital jobs: %v", err)
 	}
 
-	var akunaJobs AkunaMain
-	err = json.Unmarshal(resp.Body(), &akunaJobs)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing json (akuna capital jobs): %v", err)
+	var ghResp akunaGreenhouseResponse
+	if err := json.Unmarshal(resp.Body(), &ghResp); err != nil {
+		return nil, fmt.Errorf("error parsing Akuna Capital response: %v", err)
 	}
 
 	var jobPostings []common.JobPosting
-	for _, job := range akunaJobs.MatchedJobs {
-		location := "USA"
-		if len(job.Location) > 1 {
-			location = job.Location[0] + " " + location
-		}
-
+	for _, job := range ghResp.Jobs {
 		jobPostings = append(jobPostings, common.JobPosting{
 			Company:      "Akuna Capital",
-			JobId:        common.AkunaCapital + ":" + strconv.Itoa(int(job.ID)),
-			JobTitle:     job.Name,
-			Location:     location,
-			ExternalPath: "https://akunacapital.com/job-details?gh_jid=" + strconv.Itoa(int(job.ID)),
+			JobId:        common.AkunaCapital + ":" + fmt.Sprintf("%d", job.ID),
+			JobTitle:     job.Title,
+			Location:     strings.TrimSpace(job.Location.Name),
+			ExternalPath: job.AbsoluteURL,
+			PostedOn:     job.FirstPublished,
 		})
 	}
 

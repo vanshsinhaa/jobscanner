@@ -14,7 +14,6 @@ var (
 	Meta         = "META"
 	Tesla        = "TSLA"
 	Chime        = "CHME"
-	Splunk       = "SPNK"
 	Visa         = "VISA"
 	Uber         = "UBER"
 	Databricks   = "DTBS"
@@ -45,7 +44,6 @@ func checkDuplicatesComapnies() {
 		Meta,
 		Tesla,
 		Chime,
-		Splunk,
 		Visa,
 		Uber,
 		Databricks,
