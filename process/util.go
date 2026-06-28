@@ -8,7 +8,7 @@ import (
 )
 
 func loadJobIDs() (map[string]struct{}, error) {
-	file, err := os.Open(commonconst.JobIdFile)
+	file, err := os.Open(commonconst.JobIdFile())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return make(map[string]struct{}), nil
@@ -39,5 +39,5 @@ func saveJobIDs(jobIDSet map[string]struct{}) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(commonconst.JobIdFile, data, 0644)
+	return os.WriteFile(commonconst.JobIdFile(), data, 0644)
 }

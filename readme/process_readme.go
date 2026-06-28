@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/vanshsinhaa/jobscanner/common"
+	commonconst "github.com/vanshsinhaa/jobscanner/common_const"
 	"github.com/vanshsinhaa/jobscanner/database"
 	"github.com/vanshsinhaa/jobscanner/process"
 )
@@ -35,9 +36,14 @@ const (
 	tableSep = "| --- | --- | --- | :---: | :---: |"
 )
 
-var allowedMonths = map[string]bool{
-	"May": true,
-	"Jun": true,
+// allowedMonths returns current + previous month so isRowInAllowedMonth never
+// needs a manual update at month boundaries. Computed fresh per call.
+func allowedMonths() map[string]bool {
+	now := time.Now()
+	return map[string]bool{
+		now.Format("Jan"):                   true,
+		now.AddDate(0, -1, 0).Format("Jan"): true,
+	}
 }
 
 func ReadMeProcessNewJobs() error {
@@ -81,7 +87,7 @@ func isRowInAllowedMonth(row string) bool {
 	if len(dateStr) < 3 {
 		return false
 	}
-	return allowedMonths[dateStr[:3]]
+	return allowedMonths()[dateStr[:3]]
 }
 
 // extractLink pulls the href URL from a table row for use as a dedup key.
@@ -229,10 +235,17 @@ func parseAndReclassifyGeneralRows(content string, seen map[string]bool) (intern
 	return
 }
 
+// WriteJobsToReadme writes a given job slice directly to the README.
+// Use this in watch mode where the jobs come from process.ScrapeAllJobs()
+// rather than the sync.Once-cached process.GetProcessedNewJobs().
+func WriteJobsToReadme(jobs []common.JobPosting) error {
+	return appendJobsToReadme(jobs)
+}
+
 func appendJobsToReadme(jobPostings []common.JobPosting) error {
-	file, err := os.ReadFile("README.md")
+	file, err := os.ReadFile(commonconst.ReadmePath())
 	if err != nil {
-		return fmt.Errorf("error reading README.md: %v", err)
+		return fmt.Errorf("error reading README: %v", err)
 	}
 	content := string(file)
 
@@ -317,8 +330,8 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		return fmt.Errorf("general table: %w", err)
 	}
 
-	if err = os.WriteFile("README.md", []byte(content), 0644); err != nil {
-		return fmt.Errorf("error writing README.md: %v", err)
+	if err = os.WriteFile(commonconst.ReadmePath(), []byte(content), 0644); err != nil {
+		return fmt.Errorf("error writing README: %v", err)
 	}
 
 	fmt.Printf("Job postings written: %d intern/new-grad, %d general\n", len(internRows), len(generalRows))

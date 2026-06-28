@@ -1,47 +1,81 @@
-﻿package main
+package main
 
 import (
+	"flag"
 	"fmt"
+	"time"
 
+	"github.com/vanshsinhaa/jobscanner/database"
 	"github.com/vanshsinhaa/jobscanner/process"
 	"github.com/vanshsinhaa/jobscanner/readme"
 )
 
-func processTodaysJobsDBAndReadme() {
-	err := process.ProcessJobsWithDB()
+var (
+	watchMode bool
+	interval  time.Duration
+)
+
+func init() {
+	flag.BoolVar(&watchMode, "watch", false, "run in daemon mode, polling on interval")
+	flag.DurationVar(&interval, "interval", 15*time.Minute, "polling interval for watch mode")
+}
+
+func main() {
+	flag.Parse()
+	if watchMode {
+		runWatchMode(interval)
+		return
+	}
+	runOnce()
+}
+
+// runOnce is the standard single-run mode used by CI and local one-shot runs.
+// It scrapes, inserts, updates the README, and exports jobs.json.
+func runOnce() {
+	newJobs, err := process.ProcessJobsWithDB()
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
+	fmt.Printf("New jobs this run: %d\n", len(newJobs))
 
-	err = readme.ReadMeProcessNewJobs()
-	if err != nil {
-		fmt.Println("error while processing readme file with new jobs: ")
+	if err := readme.ReadMeProcessNewJobs(); err != nil {
+		fmt.Println("error while processing readme file with new jobs:", err)
 	}
+
+	if err := database.ExportJSON(); err != nil {
+		fmt.Println("warn: json export failed:", err)
+	}
+	// Phase 8: notify.SendCISummary(newJobs, os.Getenv("DISCORD_WEBHOOK_URL"))
 }
 
-func main() {
-	processTodaysJobsDBAndReadme()
-	// process.ProcessJobsWithDBForNewlyAddedJobPortal(common.Nokia, false)
+// runWatchMode is the local daemon mode. Each iteration calls ScrapeAllJobs() directly,
+// bypassing the sync.Once cache so fresh jobs are found every poll.
+func runWatchMode(d time.Duration) {
+	fmt.Printf("Watch mode: polling every %s\n", d)
+	for {
+		fmt.Printf("\n[%s] Running scrape...\n", time.Now().Format("15:04:05"))
 
-	// workday.Init()
-	// resp, err := sites.GetNetAppJobs()
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
-	// fmt.Println(resp)
-	// fmt.Println(len(resp))
+		jobs, err := process.ScrapeAllJobs()
+		if err != nil {
+			fmt.Println("scrape error:", err)
+			time.Sleep(d)
+			continue
+		}
 
-	// fmt.Println(resp[0])
-	// fmt.Println(len(resp))
+		fmt.Printf("New jobs this sweep: %d\n", len(jobs))
 
-	// jobs, err := workdaymain.GetWorkdayJobs(workdaymain.WorkdayPayloads[common.Walmart])
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
-	// fmt.Println(jobs[0])
-	// fmt.Println("All Jobs: ", len(jobs))
+		if err := database.InsertIntoDB(jobs); err != nil {
+			fmt.Println("insert error:", err)
+		}
+		if err := readme.WriteJobsToReadme(jobs); err != nil {
+			fmt.Println("readme error:", err)
+		}
+		if err := database.ExportJSON(); err != nil {
+			fmt.Println("warn: json export failed:", err)
+		}
+		// Phase 8: notify.SendWatchAlert(jobs, os.Getenv("DISCORD_WEBHOOK_URL"))
 
+		time.Sleep(d)
+	}
 }

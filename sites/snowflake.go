@@ -170,7 +170,7 @@ type SnowflakeJobData struct {
 
 // UpdateSnowflakeJobs updates the local snowflake.json file with job details
 func UpdateSnowflakeJobs(newJobs []SnowflakeJobData) error {
-	filePath := commonconst.SnowflakeHiringManagersFile
+	filePath := commonconst.SnowflakeHiringManagersFile()
 
 	var existingJobs []SnowflakeJobData
 	if _, err := os.Stat(filePath); err == nil {

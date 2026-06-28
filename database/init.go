@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	commonconst "github.com/vanshsinhaa/jobscanner/common_const"
 	_ "modernc.org/sqlite"
 )
 
@@ -14,11 +15,10 @@ var (
 )
 
 // GetDB returns the singleton SQLite connection.
-// The database file is created at local_data/jobs.db relative to the working directory.
 func GetDB() *sql.DB {
 	dbOnce.Do(func() {
 		var err error
-		db, err = sql.Open("sqlite", "local_data/jobs.db")
+		db, err = sql.Open("sqlite", commonconst.DBPath())
 		if err != nil {
 			log.Fatal("failed to open SQLite db:", err)
 		}

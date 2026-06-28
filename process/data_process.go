@@ -1,4 +1,4 @@
-﻿package process
+package process
 
 import (
 	"fmt"
@@ -17,52 +17,62 @@ var (
 	onceGetJobs sync.Once
 )
 
-func ProcessJobsWithDB() error {
+// ScrapeAllJobs hits every scraper, deduplicates against job_ids.json, and returns new jobs.
+// No caching — safe to call each watch-mode iteration without sync.Once interference.
+// Individual scraper failures are non-fatal: they are logged and the run continues.
+// Only deduplication errors are returned.
+func ScrapeAllJobs() ([]common.JobPosting, error) {
+	var allJobs []common.JobPosting
+
+	jobs, err := GetAllWorkdayJobs()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Println("All Workday Jobs: ", len(jobs))
+	allJobs = append(allJobs, jobs...)
+
+	for company := range common.SitesCompanies {
+		jobs, err := sitesmain.FetchJobsByCompany(company)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		fmt.Printf("All %s Jobs: %d\n", company, len(jobs))
+		allJobs = append(allJobs, jobs...)
+	}
+
+	result, err := processDublicateJobs(allJobs)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return result, err
+}
+
+// GetProcessedNewJobs caches the scrape result for single-run mode (CI).
+// The sync.Once ensures scrapers run exactly once per process lifetime.
+// In watch/daemon mode, call ScrapeAllJobs() directly each iteration to bypass the cache.
+func GetProcessedNewJobs() ([]common.JobPosting, error) {
+	onceGetJobs.Do(func() {
+		cachedJobs, cachedError = ScrapeAllJobs()
+	})
+	return cachedJobs, cachedError
+}
+
+// ProcessJobsWithDB scrapes, deduplicates, inserts into SQLite, and returns the new jobs.
+// Used in single-run (CI) mode. Returns the new jobs slice so main can log counts and
+// pass to Discord notify (Phase 8).
+func ProcessJobsWithDB() ([]common.JobPosting, error) {
 	jobs, err := GetProcessedNewJobs()
 	if err != nil {
 		fmt.Println("error while processing new jobs: ", err.Error())
-		return err
+		return nil, err
 	}
 	fmt.Println("Processed Jobs (New Jobs): ", len(jobs))
 
-	err = database.InsertIntoDB(jobs)
-	if err != nil {
+	if err = database.InsertIntoDB(jobs); err != nil {
 		fmt.Println(err.Error())
-		return err
+		return nil, err
 	}
-
-	return nil
-}
-
-func GetProcessedNewJobs() ([]common.JobPosting, error) {
-	onceGetJobs.Do(func() {
-		var allJobs []common.JobPosting
-
-		jobs, err := GetAllWorkdayJobs()
-		if err != nil {
-			fmt.Println(err.Error())
-			cachedError = err
-		}
-		fmt.Println("All Workday Jobs: ", len(jobs))
-		allJobs = append(allJobs, jobs...)
-
-		for company := range common.SitesCompanies {
-			jobs, err := sitesmain.FetchJobsByCompany(company)
-			if err != nil {
-				fmt.Println(err.Error())
-				cachedError = err
-			}
-			fmt.Printf("All %s Jobs: %d\n", company, len(jobs))
-			allJobs = append(allJobs, jobs...)
-		}
-
-		cachedJobs, cachedError = processDublicateJobs(allJobs)
-		if cachedError != nil {
-			fmt.Println(cachedError.Error())
-		}
-	})
-
-	return cachedJobs, cachedError
+	return jobs, nil
 }
 
 func ProcessJobsWithDBForNewlyAddedJobPortal(company string, w bool) error {
