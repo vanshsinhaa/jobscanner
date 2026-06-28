@@ -191,7 +191,7 @@ Pull requests welcome.
 
 ---
 
-## \U0001F3AF My Target Companies
+## 🎯 My Target Companies
 
 _Updated automatically every hour by CI._
 
