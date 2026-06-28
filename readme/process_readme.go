@@ -24,8 +24,8 @@ const (
 	// This keeps HTML comments OUT of the table body, which is critical:
 	// a comment between the separator row and the first data row breaks GitHub's
 	// markdown table parser and causes all rows to render as prose.
-	internSectionHeader  = "## ðŸŽ“ Intern & New Grad Opportunities"
-	generalSectionHeader = "## ðŸ’¼ All SWE Opportunities"
+	internSectionHeader  = "## \U0001F393 Intern & New Grad Opportunities"
+	generalSectionHeader = "## \U0001F4BC All SWE Opportunities"
 
 	// End anchors mark where each table's rows stop.
 	// They appear AFTER the last data row, which ends the table cleanly.
