@@ -25,6 +25,7 @@ func ClassifyRole(title string) string {
 		"new grad", "new graduate",
 		"entry level", "entry-level",
 		"university grad", "university graduate",
+		"university hire", "university program",
 		"campus hire",
 		"associate software engineer", "associate engineer",
 	} {

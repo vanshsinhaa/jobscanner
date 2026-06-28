@@ -66,12 +66,13 @@ func GetTargetCompanyJobs(targets []string) ([]common.JobPosting, error) {
 		placeholders[i] = "?"
 		args[i] = strings.ToLower(t)
 	}
-	// intern/new_grad first, then general; newest first within each group.
+	// intern/new_grad only; intern before new_grad, then newest first.
 	query := fmt.Sprintf(`
 		SELECT company, title, location, external_url, COALESCE(posted_on, '')
 		FROM jobs
 		WHERE LOWER(company) IN (%s)
-		ORDER BY CASE role_type WHEN 'intern' THEN 0 WHEN 'new_grad' THEN 1 ELSE 2 END ASC,
+		  AND role_type IN ('intern', 'new_grad')
+		ORDER BY CASE role_type WHEN 'intern' THEN 0 ELSE 1 END ASC,
 		         inserted_on DESC`,
 		strings.Join(placeholders, ","))
 
