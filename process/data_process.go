@@ -17,10 +17,11 @@ var (
 	onceGetJobs sync.Once
 )
 
-// ScrapeAllJobs hits every scraper, deduplicates against job_ids.json, and returns new jobs.
-// No caching — safe to call each watch-mode iteration without sync.Once interference.
-// Individual scraper failures are non-fatal: they are logged and the run continues.
-// Only deduplication errors are returned.
+// ScrapeAllJobs hits every scraper, inserts all results into the DB, deduplicates against
+// job_ids.json, and returns only the new jobs.
+// Inserting ALL scraped jobs before dedup ensures the target section can query the full
+// current picture even when zero new jobs are found this run.
+// Individual scraper failures are non-fatal. Only deduplication errors are returned.
 func ScrapeAllJobs() ([]common.JobPosting, error) {
 	var allJobs []common.JobPosting
 
@@ -40,6 +41,12 @@ func ScrapeAllJobs() ([]common.JobPosting, error) {
 		allJobs = append(allJobs, jobs...)
 	}
 
+	// Insert ALL scraped jobs so target section queries return the full current picture.
+	// INSERT OR IGNORE makes this safe — duplicates are silently skipped.
+	if err := database.InsertIntoDB(allJobs); err != nil {
+		fmt.Println("warn: db insert:", err)
+	}
+
 	result, err := processDublicateJobs(allJobs)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -57,9 +64,9 @@ func GetProcessedNewJobs() ([]common.JobPosting, error) {
 	return cachedJobs, cachedError
 }
 
-// ProcessJobsWithDB scrapes, deduplicates, inserts into SQLite, and returns the new jobs.
-// Used in single-run (CI) mode. Returns the new jobs slice so main can log counts and
-// pass to Discord notify (Phase 8).
+// ProcessJobsWithDB scrapes, inserts all into DB, deduplicates, and returns new jobs.
+// DB insert happens inside ScrapeAllJobs (called via GetProcessedNewJobs) so the target
+// section always has the full picture even when zero new jobs are found.
 func ProcessJobsWithDB() ([]common.JobPosting, error) {
 	jobs, err := GetProcessedNewJobs()
 	if err != nil {
@@ -67,11 +74,6 @@ func ProcessJobsWithDB() ([]common.JobPosting, error) {
 		return nil, err
 	}
 	fmt.Println("Processed Jobs (New Jobs): ", len(jobs))
-
-	if err = database.InsertIntoDB(jobs); err != nil {
-		fmt.Println(err.Error())
-		return nil, err
-	}
 	return jobs, nil
 }
 
