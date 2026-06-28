@@ -51,7 +51,7 @@ func WriteTargetCompanySection() error {
 		rows = append(rows, row)
 	}
 
-	data, err := os.ReadFile(commonconst.ReadmePath())
+	data, err := os.ReadFile(commonconst.TargetReadmePath())
 	if err != nil {
 		return fmt.Errorf("target section: read README: %w", err)
 	}
@@ -66,7 +66,7 @@ func WriteTargetCompanySection() error {
 		return fmt.Errorf("target section: %w", err)
 	}
 
-	if err := os.WriteFile(commonconst.ReadmePath(), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(commonconst.TargetReadmePath(), []byte(content), 0644); err != nil {
 		return fmt.Errorf("target section: write README: %w", err)
 	}
 

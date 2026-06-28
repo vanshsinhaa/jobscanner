@@ -24,6 +24,17 @@ func ReadmePath() string {
 	return "README.md"
 }
 
+// TargetReadmePath is where the target companies section is written.
+// In CI, set TARGET_README_PATH to the dev repo README so the personal feed
+// goes there instead of the public jobs repo.
+// Locally defaults to README.md (the dev repo README in the working directory).
+func TargetReadmePath() string {
+	if p := os.Getenv("TARGET_README_PATH"); p != "" {
+		return p
+	}
+	return "README.md"
+}
+
 func JobIdFile() string                   { return filepath.Join(DataDir(), "job_ids.json") }
 func SnowflakeHiringManagersFile() string { return filepath.Join(DataDir(), "snowflake.json") }
 func DBPath() string                      { return filepath.Join(DataDir(), "jobs.db") }
