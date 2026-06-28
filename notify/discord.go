@@ -15,8 +15,18 @@ import (
 // SendCISummary posts one batch summary embed per CI run.
 // Silent when webhookURL is empty or no new jobs were found.
 func SendCISummary(newJobs []common.JobPosting, webhookURL string) error {
-	if webhookURL == "" || len(newJobs) == 0 {
+	if webhookURL == "" {
 		return nil
+	}
+	if len(newJobs) == 0 {
+		return post(webhookURL, map[string]any{
+			"embeds": []map[string]any{{
+				"title":       "seems dry in here...",
+				"description": "No new jobs found this run.",
+				"color":       0x95A5A6,
+				"footer":      map[string]any{"text": fmt.Sprintf("vanshsinhaa/jobs · %s UTC", time.Now().UTC().Format("Jan 02 15:04"))},
+			}},
+		})
 	}
 
 	var internJobs []common.JobPosting
