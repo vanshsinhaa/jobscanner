@@ -1,4 +1,4 @@
-﻿package sites
+package sites
 
 import (
 	"encoding/json"
@@ -6,115 +6,128 @@ import (
 	"math"
 	"net/url"
 	"strconv"
-	"strings"
+	"time"
 
 	"github.com/vanshsinhaa/jobscanner/common"
 )
 
-type MicrosoftJob struct {
-	JobID       string `json:"jobId"`
-	Title       string `json:"title"`
-	PostingDate string `json:"postingDate"`
-	Properties  struct {
-		Locations       []string `json:"locations"`
-		PrimaryLocation string   `json:"primaryLocation"`
-		EmploymentType  string   `json:"employmentType"`
-	} `json:"properties"`
+// Microsoft careers migrated from gcsservices.careers.microsoft.com (dead, TLS cert mismatch)
+// to Eightfold AI at apply.careers.microsoft.com. The /api/pcsx/search endpoint is public —
+// no auth, no cookies required. Seniority/employment_type URL params are silently ignored by
+// the API; only the text query filter works reliably.
+const microsoftAPIBase = "https://apply.careers.microsoft.com/api/pcsx/search"
+
+// maxMicrosoftAgeDays is the scraper-level recency cutoff. Jobs older than this are skipped
+// before they ever reach job_ids.json, preventing stale closed-cycle postings from being
+// permanently marked seen. The README layer applies its own 14-day display filter on top.
+const maxMicrosoftAgeDays = 45
+
+type microsoftPCSXResponse struct {
+	Status int `json:"status"`
+	Data   struct {
+		Positions []microsoftPCSXJob `json:"positions"`
+		Count     int                `json:"count"`
+	} `json:"data"`
 }
 
-type MicrosoftJobResponse struct {
-	OperationResult struct {
-		Result struct {
-			TotalJobs int            `json:"totalJobs"`
-			Jobs      []MicrosoftJob `json:"jobs"`
-		} `json:"result"`
-	} `json:"operationResult"`
+type microsoftPCSXJob struct {
+	ID           int64    `json:"id"`
+	DisplayJobID string   `json:"displayJobId"`
+	Name         string   `json:"name"`
+	Locations    []string `json:"locations"`
+	PostedTs     int64    `json:"postedTs"`
 }
 
 func GetMicrosoftJobs() ([]common.JobPosting, error) {
 	fmt.Println("Processing: ", "Microsoft")
-	count := 1
-	jobsMicrosoft, count, err := microsoftJobs(count)
-	if err != nil {
-		fmt.Println("error processing microsoft jobs: ", err)
-		return jobsMicrosoft, err
+
+	cutoff := time.Now().AddDate(0, 0, -maxMicrosoftAgeDays).Unix()
+
+	// Two targeted text searches — the only reliable filter mechanism on this Eightfold
+	// instance. "intern" catches SWE/research intern titles; "university" catches
+	// Microsoft University Hire / new-grad postings.
+	queries := []string{"intern", "university"}
+
+	seen := make(map[string]bool)
+	var all []common.JobPosting
+
+	for _, q := range queries {
+		jobs, err := microsoftFetchAll(q, cutoff)
+		if err != nil {
+			fmt.Printf("error fetching Microsoft jobs (query=%q): %v\n", q, err)
+			continue
+		}
+		for _, job := range jobs {
+			if !seen[job.JobId] {
+				seen[job.JobId] = true
+				all = append(all, job)
+			}
+		}
 	}
 
-	for i := 2; i <= count; i++ {
-		job, _, err := microsoftJobs(i)
-		if err != nil {
-			fmt.Println("error processing microsoft jobs: ", err.Error())
+	return all, nil
+}
+
+func microsoftFetchAll(query string, cutoff int64) ([]common.JobPosting, error) {
+	jobs, total, err := microsoftPage(query, 1, cutoff)
+	if err != nil {
+		return nil, err
+	}
+
+	pages := int(math.Ceil(float64(total) / 20.0))
+	for pg := 2; pg <= pages; pg++ {
+		more, _, pageErr := microsoftPage(query, pg, cutoff)
+		if pageErr != nil {
+			fmt.Printf("warn: Microsoft page %d (query=%q): %v\n", pg, query, pageErr)
+			continue
+		}
+		jobs = append(jobs, more...)
+	}
+
+	return jobs, nil
+}
+
+func microsoftPage(query string, page int, cutoff int64) ([]common.JobPosting, int, error) {
+	client := common.GetClient()
+
+	params := url.Values{}
+	params.Set("domain", "microsoft.com")
+	params.Set("query", query)
+	params.Set("pg", strconv.Itoa(page))
+	params.Set("pgSz", "20")
+
+	resp, err := client.R().
+		SetHeader("Accept", "application/json").
+		Get(microsoftAPIBase + "?" + params.Encode())
+	if err != nil {
+		return nil, 0, fmt.Errorf("request failed: %w", err)
+	}
+
+	var parsed microsoftPCSXResponse
+	if err := json.Unmarshal(resp.Body(), &parsed); err != nil {
+		return nil, 0, fmt.Errorf("json parse failed: %w", err)
+	}
+
+	var postings []common.JobPosting
+	for _, job := range parsed.Data.Positions {
+		if job.PostedTs < cutoff {
 			continue
 		}
 
-		jobsMicrosoft = append(jobsMicrosoft, job...)
-	}
-
-	return jobsMicrosoft, nil
-}
-
-func microsoftJobs(page int) ([]common.JobPosting, int, error) {
-	client := common.GetClient()
-
-	url := formatMicrosoftURL(strconv.Itoa(page), "https://gcsservices.careers.microsoft.com/search/api/v1/search")
-
-	resp, err := client.R().Get(url)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error accessing the URL: %v", err)
-	}
-
-	var jobsResponseMicrosoft MicrosoftJobResponse
-	err = json.Unmarshal(resp.Body(), &jobsResponseMicrosoft)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error parsing response: %v", err)
-	}
-
-	totalJobs := float64(jobsResponseMicrosoft.OperationResult.Result.TotalJobs)
-	jobsPerPage := 20.0
-
-	page = int(math.Ceil(totalJobs / jobsPerPage))
-
-	var jobPostings []common.JobPosting
-	for _, job := range jobsResponseMicrosoft.OperationResult.Result.Jobs {
-		jobPosting := common.JobPosting{
-			JobId:        common.Microsoft + ":" + job.JobID,
-			JobTitle:     job.Title,
-			Location:     formatLocations(job.Properties.Locations),
-			PostedOn:     job.PostingDate,
-			ExternalPath: generateMicrosoftJobLink(job.JobID, job.Title),
-			Company:      "Microsoft",
+		location := "Unknown"
+		if len(job.Locations) > 0 {
+			location = job.Locations[0]
 		}
-		jobPostings = append(jobPostings, jobPosting)
+
+		postings = append(postings, common.JobPosting{
+			JobId:        common.Microsoft + ":" + job.DisplayJobID,
+			JobTitle:     job.Name,
+			Location:     location,
+			PostedOn:     time.Unix(job.PostedTs, 0).UTC().Format("2006-01-02T15:04:05Z"),
+			ExternalPath: "https://apply.careers.microsoft.com/careers/job/" + strconv.FormatInt(job.ID, 10),
+			Company:      "Microsoft",
+		})
 	}
 
-	return jobPostings, page, nil
-}
-
-func formatLocations(locations []string) string {
-	if len(locations) == 0 {
-		return "Unknown"
-	}
-
-	location := strings.Join(locations, "; ")
-	return location
-}
-
-// generateMicrosoftJobLink dynamically creates the job link using job ID and title
-func generateMicrosoftJobLink(jobID, jobTitle string) string {
-	baseURL := "https://jobs.careers.microsoft.com/global/en/job"
-	encodedTitle := url.PathEscape(strings.ReplaceAll(jobTitle, " ", "-"))
-	return fmt.Sprintf("%s/%s/%s", baseURL, jobID, encodedTitle)
-}
-
-func formatMicrosoftURL(page string, baseURL string) string {
-	queryParams := url.Values{}
-	queryParams.Set("domain", "United States")
-	queryParams.Set("exp", "Students and graduates")
-	queryParams.Set("l", "en_us")
-	queryParams.Set("pg", page)
-	queryParams.Set("pgSz", "20")
-	queryParams.Set("o", "Recent")
-	queryParams.Set("flt", "true")
-
-	return baseURL + "?" + queryParams.Encode()
+	return postings, parsed.Data.Count, nil
 }
