@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/vanshsinhaa/jobscanner/database"
+	"github.com/vanshsinhaa/jobscanner/notify"
 	"github.com/vanshsinhaa/jobscanner/process"
 	"github.com/vanshsinhaa/jobscanner/readme"
 )
@@ -46,7 +48,9 @@ func runOnce() {
 	if err := database.ExportJSON(); err != nil {
 		fmt.Println("warn: json export failed:", err)
 	}
-	// Phase 8: notify.SendCISummary(newJobs, os.Getenv("DISCORD_WEBHOOK_URL"))
+	if err := notify.SendCISummary(newJobs, os.Getenv("DISCORD_WEBHOOK_URL")); err != nil {
+		fmt.Println("warn: discord notify failed:", err)
+	}
 }
 
 // runWatchMode is the local daemon mode. Each iteration calls ScrapeAllJobs() directly,
@@ -74,7 +78,9 @@ func runWatchMode(d time.Duration) {
 		if err := database.ExportJSON(); err != nil {
 			fmt.Println("warn: json export failed:", err)
 		}
-		// Phase 8: notify.SendWatchAlert(jobs, os.Getenv("DISCORD_WEBHOOK_URL"))
+		if err := notify.SendWatchAlert(jobs, os.Getenv("DISCORD_WEBHOOK_URL")); err != nil {
+			fmt.Println("warn: discord notify failed:", err)
+		}
 
 		time.Sleep(d)
 	}
