@@ -55,19 +55,12 @@ type appleTeamFilter struct {
 	SubTeam string `json:"subTeam"`
 }
 
-// appleInternTeams: STDNT subtypes only. Apple's Student Programs team is where
-// actual internship/co-op postings live. Using the broad SFTWR/MLAI set here
-// lets Apple's full-text search find "intern" in FTE job descriptions and pull
-// in regular software-engineer roles — wrong signal, wrong jobs.
-var appleInternTeams = []appleTeamFilter{
-	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-INTRN"},
-	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-CORP"},
-	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-ACR"},
-}
-
-// appleUniversityTeams: STDNT + SFTWR + MLAI. University/new-grad hires are spread
-// across engineering teams, not just Student Programs.
-var appleUniversityTeams = []appleTeamFilter{
+// appleTeams covers both intern and university queries. Apple posts internships under
+// STDNT (Student Programs) AND under SFTWR/MLAI when the role is managed by that
+// engineering team directly. The "intern" query text-search already scopes results —
+// FTE roles that happen to mention "intern" in their description are filtered out at
+// classification time (ClassifyRole checks the title, not the description).
+var appleTeams = []appleTeamFilter{
 	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-INTRN"},
 	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-CORP"},
 	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-ACR"},
@@ -186,15 +179,11 @@ func appleFetchAll(client *http.Client, csrfToken, query string, cutoff time.Tim
 }
 
 func applePage(client *http.Client, csrfToken, query string, page int) ([]common.JobPosting, int, error) {
-	teams := appleUniversityTeams
-	if query == "intern" {
-		teams = appleInternTeams
-	}
 	payload := map[string]any{
 		"query": query,
 		"filters": map[string]any{
 			"locations": []string{"postLocation-USA"},
-			"teams":     teams,
+			"teams":     appleTeams,
 		},
 		"page":   page,
 		"locale": "en-us",
