@@ -53,7 +53,12 @@ func SyncTargetCompanies(names []string) error {
 	return nil
 }
 
-// GetTargetCompanyJobs returns all jobs in the DB whose company matches one of the targets.
+// GetTargetCompanyJobs returns intern/new_grad jobs in the DB for the given target companies.
+// The SQL pre-filters by role_type, then Go post-filters with ClassifyRole(title) to remove
+// FTE roles that were bulk-tagged 'intern' by broad text-search query context (e.g. Apple's
+// "intern" full-text search matches FTE job descriptions that mention intern programs).
+// new_grad DB entries are always kept — university hires often have generic titles that
+// ClassifyRole cannot identify without the query-context signal.
 func GetTargetCompanyJobs(targets []string) ([]common.JobPosting, error) {
 	if len(targets) == 0 {
 		return nil, nil
@@ -67,8 +72,9 @@ func GetTargetCompanyJobs(targets []string) ([]common.JobPosting, error) {
 		args[i] = strings.ToLower(t)
 	}
 	// intern/new_grad only; intern before new_grad, then newest first.
+	// role_type is fetched so we can use it in the post-filter below.
 	query := fmt.Sprintf(`
-		SELECT company, title, location, external_url, COALESCE(posted_on, '')
+		SELECT company, title, location, external_url, COALESCE(posted_on, ''), role_type
 		FROM jobs
 		WHERE LOWER(company) IN (%s)
 		  AND role_type IN ('intern', 'new_grad')
@@ -85,9 +91,18 @@ func GetTargetCompanyJobs(targets []string) ([]common.JobPosting, error) {
 	var jobs []common.JobPosting
 	for rows.Next() {
 		var j common.JobPosting
-		if err := rows.Scan(&j.Company, &j.JobTitle, &j.Location, &j.ExternalPath, &j.PostedOn); err != nil {
+		var dbRoleType string
+		if err := rows.Scan(&j.Company, &j.JobTitle, &j.Location, &j.ExternalPath, &j.PostedOn, &dbRoleType); err != nil {
 			continue
 		}
+		// Post-filter: exclude FTE roles that carry role_type='intern' only because
+		// they were returned by a broad "intern" text search (their title has no
+		// intern/co-op keyword and ClassifyRole classifies them as general).
+		// new_grad entries bypass this check — their DB tag is the authoritative signal.
+		if dbRoleType == "intern" && ClassifyRole(j.JobTitle) == "general" {
+			continue
+		}
+		j.RoleType = dbRoleType
 		jobs = append(jobs, j)
 	}
 	return jobs, rows.Err()
