@@ -50,6 +50,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md local_data/job_ids.json local_data/jobs.json
           git diff --staged --quiet || git commit -m "update: jobs $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git pull --rebase
           git push
 
       - name: Commit target feed to dev repo
@@ -59,4 +60,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
           git diff --staged --quiet || git commit -m "update: target feed $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git pull --rebase
           git push
