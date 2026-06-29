@@ -39,4 +39,12 @@ func JobIdFile() string                   { return filepath.Join(DataDir(), "job
 func SnowflakeHiringManagersFile() string { return filepath.Join(DataDir(), "snowflake.json") }
 func DBPath() string                      { return filepath.Join(DataDir(), "jobs.db") }
 func JSONExportPath() string              { return filepath.Join(DataDir(), "jobs.json") }
-func TargetCompaniesFile() string         { return filepath.Join(DataDir(), "target_companies.json") }
+// TargetCompaniesFile returns the path to target_companies.json.
+// In CI, set TARGET_COMPANIES_FILE to point at the scraper repo's local_data so
+// the personal config is read from the dev repo, not the public jobs repo.
+func TargetCompaniesFile() string {
+	if f := os.Getenv("TARGET_COMPANIES_FILE"); f != "" {
+		return f
+	}
+	return filepath.Join(DataDir(), "target_companies.json")
+}

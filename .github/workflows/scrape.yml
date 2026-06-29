@@ -39,6 +39,7 @@ jobs:
           DATA_DIR: ${{ github.workspace }}/jobs/local_data
           README_PATH: ${{ github.workspace }}/jobs/README.md
           TARGET_README_PATH: ${{ github.workspace }}/scraper/README.md
+          TARGET_COMPANIES_FILE: ${{ github.workspace }}/scraper/local_data/target_companies.json
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: go run main.go
 

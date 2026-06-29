@@ -20,7 +20,10 @@ func InsertIntoDB(jobs []common.JobPosting) error {
 	defer stmt.Close()
 
 	for _, j := range jobs {
-		roleType := ClassifyRole(j.JobTitle)
+		roleType := j.RoleType
+		if roleType == "" {
+			roleType = ClassifyRole(j.JobTitle)
+		}
 
 		var postedOn interface{}
 		if j.PostedOn != "" {

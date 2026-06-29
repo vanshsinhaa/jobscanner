@@ -8,6 +8,11 @@ type JobPosting struct {
 	Location     string `json:"locationsText,omitempty"`
 	PostedOn     string `json:"postedOn,omitempty"`
 	ExternalPath string `json:"externalPath"`
+	// RoleType may be set by scrapers that know the role category from context
+	// (e.g. Apple sets "intern" for intern-query results, "new_grad" for university-query).
+	// When non-empty, InsertIntoDB uses it directly instead of calling ClassifyRole.
+	// Empty means ClassifyRole should infer from the title.
+	RoleType string `json:"roleType,omitempty"`
 }
 
 // JobsResponse represents the structure of the full response

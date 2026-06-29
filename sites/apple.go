@@ -147,6 +147,25 @@ func appleFetchAll(client *http.Client, csrfToken, query string, cutoff time.Tim
 		jobs = append(jobs, more...)
 	}
 
+	// Tag each job with the role type implied by the search query so the DB
+	// classifier doesn't have to guess from title alone. Apple university hires
+	// often have generic titles like "Software Engineer, University Graduate"
+	// that may or may not contain keywords — the query context is authoritative.
+	roleFromQuery := ""
+	switch query {
+	case "intern":
+		roleFromQuery = "intern"
+	case "university":
+		roleFromQuery = "new_grad"
+	}
+	if roleFromQuery != "" {
+		for i := range jobs {
+			if jobs[i].RoleType == "" {
+				jobs[i].RoleType = roleFromQuery
+			}
+		}
+	}
+
 	var recent []common.JobPosting
 	for _, j := range jobs {
 		t, err := time.Parse("2006-01-02T15:04:05.000Z", j.PostedOn)

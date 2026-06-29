@@ -16,7 +16,8 @@ import (
 const (
 	maxTableRows       = 1500
 	maxInternTableRows = 500
-	maxJobAgeDays      = 14
+	maxJobAgeDays      = 14  // general SWE: 2-week window; roles fill fast, stale listings aren't useful
+	maxInternJobAgeDays = 60 // intern/new-grad: 60-day window; programs post months before the start date
 
 	// Section headers used to locate each table in the README.
 	// The code searches for the table separator row within the bounded region
@@ -286,12 +287,26 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 		return ti.After(tj)
 	})
 
-	// Drop jobs older than maxJobAgeDays. Jobs without a parseable date always pass.
-	cutoff := time.Now().AddDate(0, 0, -maxJobAgeDays)
+	// Drop jobs older than their role's cutoff. Jobs without a parseable date always pass.
+	// Intern/new-grad roles use a longer window — programs post months before the start date.
+	cutoffGeneral := time.Now().AddDate(0, 0, -maxJobAgeDays)
+	cutoffIntern := time.Now().AddDate(0, 0, -maxInternJobAgeDays)
 	var filtered []common.JobPosting
 	for _, job := range jobPostings {
 		t, ok := parsePostingDate(job.PostedOn)
-		if ok && t.Before(cutoff) {
+		if !ok {
+			filtered = append(filtered, job)
+			continue
+		}
+		rt := job.RoleType
+		if rt == "" {
+			rt = database.ClassifyRole(job.JobTitle)
+		}
+		cutoff := cutoffGeneral
+		if rt == "intern" || rt == "new_grad" {
+			cutoff = cutoffIntern
+		}
+		if t.Before(cutoff) {
 			continue
 		}
 		filtered = append(filtered, job)
