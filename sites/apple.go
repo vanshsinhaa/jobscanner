@@ -55,7 +55,19 @@ type appleTeamFilter struct {
 	SubTeam string `json:"subTeam"`
 }
 
-var appleTeams = []appleTeamFilter{
+// appleInternTeams: STDNT subtypes only. Apple's Student Programs team is where
+// actual internship/co-op postings live. Using the broad SFTWR/MLAI set here
+// lets Apple's full-text search find "intern" in FTE job descriptions and pull
+// in regular software-engineer roles — wrong signal, wrong jobs.
+var appleInternTeams = []appleTeamFilter{
+	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-INTRN"},
+	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-CORP"},
+	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-ACR"},
+}
+
+// appleUniversityTeams: STDNT + SFTWR + MLAI. University/new-grad hires are spread
+// across engineering teams, not just Student Programs.
+var appleUniversityTeams = []appleTeamFilter{
 	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-INTRN"},
 	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-CORP"},
 	{Team: "teamsAndSubTeams-STDNT", SubTeam: "subTeam-ACR"},
@@ -147,21 +159,14 @@ func appleFetchAll(client *http.Client, csrfToken, query string, cutoff time.Tim
 		jobs = append(jobs, more...)
 	}
 
-	// Tag each job with the role type implied by the search query so the DB
-	// classifier doesn't have to guess from title alone. Apple university hires
-	// often have generic titles like "Software Engineer, University Graduate"
-	// that may or may not contain keywords — the query context is authoritative.
-	roleFromQuery := ""
-	switch query {
-	case "intern":
-		roleFromQuery = "intern"
-	case "university":
-		roleFromQuery = "new_grad"
-	}
-	if roleFromQuery != "" {
+	// For the "university" query, tag jobs as new_grad. University hires sometimes
+	// have generic titles that ClassifyRole can't identify from keywords alone.
+	// The "intern" query is NOT tagged here — STDNT-team intern postings always
+	// contain "intern"/"internship" in the title and ClassifyRole handles them.
+	if query == "university" {
 		for i := range jobs {
 			if jobs[i].RoleType == "" {
-				jobs[i].RoleType = roleFromQuery
+				jobs[i].RoleType = "new_grad"
 			}
 		}
 	}
@@ -181,11 +186,15 @@ func appleFetchAll(client *http.Client, csrfToken, query string, cutoff time.Tim
 }
 
 func applePage(client *http.Client, csrfToken, query string, page int) ([]common.JobPosting, int, error) {
+	teams := appleUniversityTeams
+	if query == "intern" {
+		teams = appleInternTeams
+	}
 	payload := map[string]any{
 		"query": query,
 		"filters": map[string]any{
 			"locations": []string{"postLocation-USA"},
-			"teams":     appleTeams,
+			"teams":     teams,
 		},
 		"page":   page,
 		"locale": "en-us",
