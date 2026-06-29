@@ -6,8 +6,33 @@ import (
 	"os"
 	"time"
 
+	"github.com/vanshsinhaa/jobscanner/common"
 	commonconst "github.com/vanshsinhaa/jobscanner/common_const"
 )
+
+// GetAllJobs returns every job in the current run's DB, ordered newest-insert first.
+// In CI the DB is ephemeral and rebuilt each run, so this is exactly what the scraper
+// found this run. Use this to source the jobs repo README — ensures all scraped jobs
+// appear there, not just first-time-seen (dedup-filtered) jobs.
+func GetAllJobs() ([]common.JobPosting, error) {
+	db := GetDB()
+	rows, err := db.Query(`SELECT company, title, location, external_url, COALESCE(posted_on, ''), role_type
+		FROM jobs ORDER BY inserted_on DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("get all jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []common.JobPosting
+	for rows.Next() {
+		var j common.JobPosting
+		if err := rows.Scan(&j.Company, &j.JobTitle, &j.Location, &j.ExternalPath, &j.PostedOn, &j.RoleType); err != nil {
+			continue
+		}
+		jobs = append(jobs, j)
+	}
+	return jobs, rows.Err()
+}
 
 type JobExport struct {
 	Company  string `json:"company"`

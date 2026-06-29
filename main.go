@@ -79,10 +79,10 @@ func runWatchMode(d time.Duration) {
 
 		fmt.Printf("New jobs this sweep: %d\n", len(jobs))
 
-		if err := database.InsertIntoDB(jobs); err != nil {
-			fmt.Println("insert error:", err)
-		}
-		if err := readme.WriteJobsToReadme(jobs); err != nil {
+		// ScrapeAllJobs already inserted all scraped jobs into the DB before dedup.
+		// Use ReadMeProcessNewJobs() (DB-backed) so the README gets the full current
+		// picture, not only the dedup-filtered new-only slice.
+		if err := readme.ReadMeProcessNewJobs(); err != nil {
 			fmt.Println("readme error:", err)
 		}
 		if err := database.ExportJSON(); err != nil {

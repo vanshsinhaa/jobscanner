@@ -10,7 +10,6 @@ import (
 	"github.com/vanshsinhaa/jobscanner/common"
 	commonconst "github.com/vanshsinhaa/jobscanner/common_const"
 	"github.com/vanshsinhaa/jobscanner/database"
-	"github.com/vanshsinhaa/jobscanner/process"
 )
 
 const (
@@ -47,10 +46,15 @@ func allowedMonths() map[string]bool {
 	}
 }
 
+// ReadMeProcessNewJobs writes all jobs from the current run's DB to the jobs repo README.
+// Sourcing from the DB (not the dedup-filtered new-only list) ensures the jobs repo README
+// always reflects the full current scrape: all companies' jobs appear, not just first-seen ones.
+// The kept-rows mechanism in appendJobsToReadme still provides resilience for temporarily-
+// failing scrapers — rows from prior runs persist until isRowInAllowedMonth ages them out.
 func ReadMeProcessNewJobs() error {
-	jobs, err := process.GetProcessedNewJobs()
+	jobs, err := database.GetAllJobs()
 	if err != nil {
-		fmt.Println("error while getting new processed jobs: ", err.Error())
+		return fmt.Errorf("readme: get all jobs from db: %w", err)
 	}
 	return appendJobsToReadme(jobs)
 }
