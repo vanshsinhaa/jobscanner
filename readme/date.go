@@ -82,3 +82,43 @@ func displayDate(raw string) string {
 
 	return "Unknown"
 }
+
+// extractRowDate recovers a sortable time.Time from a raw markdown table row.
+// Looks for an embedded <!-- posted:... --> comment first (written by new row
+// construction). Falls back to the display date column for rows written before
+// comment embedding was introduced.
+func extractRowDate(row string) (time.Time, bool) {
+	const prefix = "<!-- posted:"
+	const suffix = " -->"
+	if idx := strings.Index(row, prefix); idx != -1 {
+		start := idx + len(prefix)
+		if end := strings.Index(row[start:], suffix); end != -1 {
+			raw := strings.TrimSpace(row[start : start+end])
+			if t, ok := parsePostingDate(raw); ok {
+				return t, true
+			}
+		}
+	}
+
+	// Fallback: parse the display date from the last non-empty, non-comment column.
+	cols := strings.Split(row, "|")
+	for i := len(cols) - 1; i >= 0; i-- {
+		col := strings.TrimSpace(cols[i])
+		if col == "" || strings.HasPrefix(col, "<!--") {
+			continue
+		}
+		// Handles Workday relative strings ("Today", "2 Days Ago") directly.
+		if t, ok := parsePostingDate(col); ok {
+			return t, true
+		}
+		// "Mon DD" display format needs year injection.
+		for _, format := range []string{"Jan 02", "Jan 2"} {
+			if t, err := time.Parse(format, col); err == nil {
+				now := time.Now()
+				return time.Date(now.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC), true
+			}
+		}
+		break
+	}
+	return time.Time{}, false
+}

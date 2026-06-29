@@ -69,7 +69,7 @@ func isRowInAllowedMonth(row string) bool {
 	dateStr := ""
 	for i := len(cols) - 1; i >= 0; i-- {
 		col := strings.TrimSpace(cols[i])
-		if col != "" {
+		if col != "" && !strings.HasPrefix(col, "<!--") {
 			dateStr = col
 			break
 		}
@@ -112,6 +112,27 @@ func extractTitle(row string) string {
 		return ""
 	}
 	return strings.TrimSpace(cols[2])
+}
+
+// sortRows sorts markdown table rows newest-first using extractRowDate.
+// Rows without a parseable date sort to the end. Uses SliceStable so equal-date
+// rows keep their relative order (new rows added this run stay ahead of same-day
+// kept rows from previous runs).
+func sortRows(rows []string) {
+	sort.SliceStable(rows, func(i, j int) bool {
+		ti, oki := extractRowDate(rows[i])
+		tj, okj := extractRowDate(rows[j])
+		if !oki && !okj {
+			return false
+		}
+		if !oki {
+			return false
+		}
+		if !okj {
+			return true
+		}
+		return ti.After(tj)
+	})
 }
 
 // replaceSection writes rows into a table identified by its section header.
@@ -283,8 +304,8 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 	// Classify and build rows for newly scraped jobs.
 	var newInternRows, newGeneralRows []string
 	for _, job := range jobPostings {
-		row := fmt.Sprintf("| **%s** | %s | %s | <a href=\"%s\" target=\"_blank\"><img src=\"https://i.imgur.com/u1KNU8z.png\" width=\"118\" alt=\"Apply\"></a> | %s |",
-			job.Company, job.JobTitle, job.Location, job.ExternalPath, displayDate(job.PostedOn))
+		row := fmt.Sprintf("| **%s** | %s | %s | <a href=\"%s\" target=\"_blank\"><img src=\"https://i.imgur.com/u1KNU8z.png\" width=\"118\" alt=\"Apply\"></a> | %s |<!-- posted:%s -->",
+			job.Company, job.JobTitle, job.Location, job.ExternalPath, displayDate(job.PostedOn), job.PostedOn)
 		link := extractLink(row)
 		if link != "" && seen[link] {
 			continue
@@ -305,12 +326,15 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 	// Re-classify existing general rows; move any intern/new-grad into the intern table.
 	reclassifiedIntern, keptGeneralRows := parseAndReclassifyGeneralRows(content, seen)
 
-	// Merge new + kept for each table, newest rows first, capped separately.
+	// Merge new + kept for each table, then sort the merged slice so the overall
+	// table is newest-first regardless of which run wrote each row.
 	internRows := append(append(newInternRows, keptInternRows...), reclassifiedIntern...)
+	sortRows(internRows)
 	if len(internRows) > maxInternTableRows {
 		internRows = internRows[:maxInternTableRows]
 	}
 	generalRows := append(newGeneralRows, keptGeneralRows...)
+	sortRows(generalRows)
 	if len(generalRows) > maxTableRows {
 		generalRows = generalRows[:maxTableRows]
 	}
