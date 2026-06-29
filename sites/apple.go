@@ -152,14 +152,27 @@ func appleFetchAll(client *http.Client, csrfToken, query string, cutoff time.Tim
 		jobs = append(jobs, more...)
 	}
 
-	// For the "university" query, tag jobs as new_grad. University hires sometimes
-	// have generic titles that ClassifyRole can't identify from keywords alone.
-	// The "intern" query is NOT tagged here — STDNT-team intern postings always
-	// contain "intern"/"internship" in the title and ClassifyRole handles them.
-	if query == "university" {
+	// Tag each job with the role type implied by the search query so the DB
+	// classifier doesn't have to guess from title alone. Apple intern postings
+	// may have titles like "Student Programs - Machine Learning" that lack
+	// "intern"/"co-op" keywords and would be misclassified as "general" by
+	// ClassifyRole. Apple university hires often have generic titles — the query
+	// context is the authoritative signal for both categories.
+	// IMPORTANT: this must NOT be removed. Without it, Apple "intern"-query results
+	// with non-standard titles (confirmed in CI on 2026-06-29) are stored as
+	// role_type='general' and never appear in the target feed or intern README table.
+	// See: commit 72620de (fix) → 5d77fb7 (broke by removing) → d3a583c (still broken).
+	roleFromQuery := ""
+	switch query {
+	case "intern":
+		roleFromQuery = "intern"
+	case "university":
+		roleFromQuery = "new_grad"
+	}
+	if roleFromQuery != "" {
 		for i := range jobs {
 			if jobs[i].RoleType == "" {
-				jobs[i].RoleType = "new_grad"
+				jobs[i].RoleType = roleFromQuery
 			}
 		}
 	}
