@@ -6,9 +6,11 @@ import (
 )
 
 // internRe uses word boundaries to match intern/co-op keywords as complete words.
-// This prevents false positives from substrings: "International" and "Internal"
-// contain "intern" but do NOT match \bintern\b because the next char is a word char.
-var internRe = regexp.MustCompile(`(?i)\b(intern|internship|co-op|coop|co op)\b`)
+// This prevents false positives: "International"/"Internal" don't match because the
+// next char after "intern" is a word char and breaks the boundary.
+// Plural forms (Interns, Internships, Co-ops) are explicitly covered — \binternship\b
+// does NOT match "Internships" because "p" is followed by "s" (word char, no boundary).
+var internRe = regexp.MustCompile(`(?i)\b(intern(?:ship)?s?|co-?ops?|co ops?)\b`)
 
 // ClassifyRole returns "intern", "new_grad", or "general" based on job title keywords.
 // Called at insert time (database/insert_data.go) and at display time (readme/process_readme.go).
