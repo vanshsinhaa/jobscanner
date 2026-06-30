@@ -197,6 +197,7 @@ _Updated automatically every hour by CI._
 
 | Company | Role | Location | Apply | Posted |
 | --- | --- | --- | :---: | :---: |
+| **Databricks** | PhD GenAI Research Scientist Intern | San Francisco, California | <a href="https://databricks.com/company/careers/open-positions/job?gh_jid=7011263002" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Unknown |
 | **Apple** | Machine Learning and Artificial Intelligence Masters Internships | United States of America | <a href="https://jobs.apple.com/en-us/details/200664221-3810" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | May 22 |
 | **Apple** | Machine Learning and Artificial Intelligence PhD Internships | United States of America | <a href="https://jobs.apple.com/en-us/details/200664223-3810" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | May 22 |
 | **Apple** | Business, Marketing & Creative Masters Internships | United States of America | <a href="https://jobs.apple.com/en-us/details/200664247-3810" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | May 22 |
@@ -223,7 +224,6 @@ _Updated automatically every hour by CI._
 | **Microsoft** | Data Center Technicians Intern | Netherlands, Noord-Holland, Amsterdam | <a href="https://apply.careers.microsoft.com/careers/job/1970393556873444" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Jun 06 |
 | **Microsoft** | Data Center Technicians Intern | Spain, Madrid, Madrid | <a href="https://apply.careers.microsoft.com/careers/job/1970393556873445" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Jun 06 |
 | **Microsoft** | Government Affairs: Events and Operations Internship Opportunities | Belgium, Brussels Region, Brussels | <a href="https://apply.careers.microsoft.com/careers/job/1970393556887862" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Jun 22 |
-| **Databricks** | PhD GenAI Research Scientist Intern | San Francisco, California | <a href="https://databricks.com/company/careers/open-positions/job?gh_jid=7011263002" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Unknown |
 | **Meta** | Research Scientist Intern, Photorealistic Telepresence (PhD) | Sausalito, CA, Pittsburgh, PA, Redmond, WA | <a href="https://www.metacareers.com/jobs/2022109075207025" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Unknown |
 | **Meta** | Research Scientist Intern, Embedded Contextual AI on Wearables (PhD) | Sunnyvale, CA, Redmond, WA | <a href="https://www.metacareers.com/jobs/2160167211413098" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Unknown |
 | **Meta** | Research Scientist Intern PhD,  Applied Research | Menlo Park, CA | <a href="https://www.metacareers.com/jobs/2633206137040139" target="_blank"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Unknown |
