@@ -9,8 +9,8 @@ func init() {
 	workdaymain.RegisterPayload(common.Symbotic, common.WorkdayPayload{
 		Company: "Symbotic",
 		CmpCode: common.Symbotic,
-		PreURL:  "https://symbotic.wd1.myworkdayjobs.com/en-US/Symbotic",
-		JobsURL: "https://symbotic.wd1.myworkdayjobs.com/wday/cxs/symbotic/Symbotic/jobs",
+		PreURL:  "https://symbotic.wd504.myworkdayjobs.com/en-US/Symbotic",
+		JobsURL: "https://symbotic.wd504.myworkdayjobs.com/wday/cxs/symbotic/Symbotic/jobs",
 		PayLoad: `{
   "appliedFacets": {
     "jobFamilyGroup": [

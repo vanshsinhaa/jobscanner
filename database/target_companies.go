@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	commonconst "github.com/vanshsinhaa/jobscanner/common_const"
@@ -15,6 +16,42 @@ type TargetCompanyStatus struct {
 	Name      string
 	JobsFound int
 	LastSeen  string
+}
+
+// targetAliases maps a target_companies.json name (lowercased) to the additional
+// scraped company names (lowercased) it should match. Needed where the brand the
+// user tracks differs from the name the scraper emits:
+//   - Amex postings carry "American Express"
+//   - Snap postings carry "Snapchat" (Workday tenant name)
+//   - Square postings come from Block's Greenhouse board (scraper already emits "Square")
+//   - Twitter no longer exists: X Corp merged into xAI, scraper emits "xAI"
+//   - Trello is an Atlassian product; scraper emits "Atlassian"
+//   - Slack/Annapurna Labs are retagged sub-brands (process.retagSubBrands) and match directly
+var targetAliases = map[string][]string{
+	"amex":    {"american express"},
+	"snap":    {"snapchat"},
+	"twitter": {"xai"},
+	"trello":  {"atlassian"},
+}
+
+// expandTargetNames lowercases the configured targets and appends alias names.
+func expandTargetNames(targets []string) []string {
+	seen := make(map[string]bool)
+	var names []string
+	add := func(n string) {
+		n = strings.ToLower(n)
+		if !seen[n] {
+			seen[n] = true
+			names = append(names, n)
+		}
+	}
+	for _, t := range targets {
+		add(t)
+		for _, alias := range targetAliases[strings.ToLower(t)] {
+			add(alias)
+		}
+	}
+	return names
 }
 
 // LoadTargetCompanies reads target_companies.json. Returns empty slice if file doesn't exist.
@@ -65,11 +102,12 @@ func GetTargetCompanyJobs(targets []string) ([]common.JobPosting, error) {
 	}
 	db := GetDB()
 
-	placeholders := make([]string, len(targets))
-	args := make([]any, len(targets))
-	for i, t := range targets {
+	names := expandTargetNames(targets)
+	placeholders := make([]string, len(names))
+	args := make([]any, len(names))
+	for i, n := range names {
 		placeholders[i] = "?"
-		args[i] = strings.ToLower(t)
+		args[i] = n
 	}
 	// intern/new_grad only; intern before new_grad, then newest first.
 	// role_type is fetched so we can use it in the post-filter below.
@@ -112,28 +150,34 @@ func GetTargetCompanyJobs(targets []string) ([]common.JobPosting, error) {
 // Useful locally where the DB accumulates across runs; in CI the DB is per-run only.
 func TargetCompanyReport() ([]TargetCompanyStatus, error) {
 	db := GetDB()
-	rows, err := db.Query(`
-		SELECT tc.name,
-		       COUNT(j.id)       AS jobs_found,
-		       MAX(j.inserted_on) AS last_seen
-		FROM target_companies tc
-		LEFT JOIN jobs j
-		       ON LOWER(j.company) = LOWER(tc.name)
-		      AND j.inserted_on > datetime('now', '-7 days')
-		GROUP BY tc.name
-		ORDER BY jobs_found ASC`)
+	targets, err := LoadTargetCompanies()
 	if err != nil {
-		return nil, fmt.Errorf("target report query: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
 
 	var results []TargetCompanyStatus
-	for rows.Next() {
+	for _, t := range targets {
+		names := expandTargetNames([]string{t})
+		placeholders := make([]string, len(names))
+		args := make([]any, len(names))
+		for i, n := range names {
+			placeholders[i] = "?"
+			args[i] = n
+		}
+		query := fmt.Sprintf(`
+			SELECT COUNT(id), COALESCE(MAX(inserted_on), '')
+			FROM jobs
+			WHERE LOWER(company) IN (%s)
+			  AND inserted_on > datetime('now', '-7 days')`,
+			strings.Join(placeholders, ","))
+
 		var s TargetCompanyStatus
-		if err := rows.Scan(&s.Name, &s.JobsFound, &s.LastSeen); err != nil {
-			continue
+		s.Name = t
+		if err := db.QueryRow(query, args...).Scan(&s.JobsFound, &s.LastSeen); err != nil {
+			return nil, fmt.Errorf("target report query for %q: %w", t, err)
 		}
 		results = append(results, s)
 	}
-	return results, rows.Err()
+	sort.Slice(results, func(i, j int) bool { return results[i].JobsFound < results[j].JobsFound })
+	return results, nil
 }

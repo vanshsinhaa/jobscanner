@@ -54,6 +54,44 @@ func FetchJobsByCompany(company string) ([]common.JobPosting, error) {
 		return sites.GetNetAppJobs()
 	case common.Nokia:
 		return sites.GetNokiaJobs()
+	case common.Stripe:
+		return sites.GetStripeJobs()
+	case common.Anthropic:
+		return sites.GetAnthropicJobs()
+	case common.Pinterest:
+		return sites.GetPinterestJobs()
+	case common.Airbnb:
+		return sites.GetAirbnbJobs()
+	case common.Lyft:
+		return sites.GetLyftJobs()
+	case common.DoorDash:
+		return sites.GetDoorDashJobs()
+	case common.Instacart:
+		return sites.GetInstacartJobs()
+	case common.Coinbase:
+		return sites.GetCoinbaseJobs()
+	case common.Robinhood:
+		return sites.GetRobinhoodJobs()
+	case common.Square:
+		return sites.GetSquareJobs()
+	case common.Asana:
+		return sites.GetAsanaJobs()
+	case common.Figma:
+		return sites.GetFigmaJobs()
+	case common.XAI:
+		return sites.GetXAIJobs()
+	case common.OpenAI:
+		return sites.GetOpenAIJobs()
+	case common.Notion:
+		return sites.GetNotionJobs()
+	case common.Palantir:
+		return sites.GetPalantirJobs()
+	case common.PayPal:
+		return sites.GetPayPalJobs()
+	case common.Shopify:
+		return sites.GetShopifyJobs()
+	case common.Atlassian:
+		return sites.GetAtlassianJobs()
 	default:
 		return nil, fmt.Errorf("unknown company: %s", company)
 	} //////////////////////// Edit here

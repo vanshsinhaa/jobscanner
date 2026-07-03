@@ -95,23 +95,16 @@ func GetSnowflakeJobs() ([]common.JobPosting, error) {
   "isSliderEnable": false,
   "pageId": "page11",
   "siteType": "external",
-  "keywords": "software",
+  "keywords": "",
   "global": true,
   "selected_fields": {
     "category": [
       "Engineering",
-      "IT",
-      "Security",
-      "Product"
+      "Enterprise Technology",
+      "Data, Analytics and AI"
     ],
     "region": [
-      "AMS"
-    ],
-    "location": [
-      "Bellevue, Washington, USA",
-      "McLean, Virginia, USA",
-      "Dublin, California, USA",
-      "San Mateo, California, USA"
+      "Americas"
     ]
   },
   "sort": {

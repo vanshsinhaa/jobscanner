@@ -66,9 +66,16 @@ func parseJobPage(body []byte) ([]common.JobPosting, string, error) {
 			return
 		}
 
+		// Real job cards have aria-label "Learn more about <title>" and a relative
+		// jobs/results/ href. Anything else (.WpHeLc also matches "Help link" and
+		// other nav anchors) is not a posting.
+		if !strings.Contains(ariaLabel, "Learn more about") || !strings.HasPrefix(href, "jobs/results/") {
+			return
+		}
+
 		jobs = append(jobs, common.JobPosting{
 			JobId:        common.Google + ":" + jobId,
-			JobTitle:     strings.ReplaceAll(ariaLabel, "Learn more about", ""),
+			JobTitle:     strings.TrimSpace(strings.ReplaceAll(ariaLabel, "Learn more about", "")),
 			ExternalPath: "https://www.google.com/about/careers/applications/" + href,
 			Company:      "Google",
 		})

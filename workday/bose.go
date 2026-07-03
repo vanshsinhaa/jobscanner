@@ -9,8 +9,8 @@ func init() {
 	workdaymain.RegisterPayload(common.Bose, common.WorkdayPayload{
 		Company: "Bose",
 		CmpCode: common.Bose,
-		PreURL:  "https://boseallaboutme.wd1.myworkdayjobs.com/en-US/Bose_Careers",
-		JobsURL: "https://boseallaboutme.wd1.myworkdayjobs.com/wday/cxs/boseallaboutme/Bose_Careers/jobs",
+		PreURL:  "https://boseallaboutme.wd503.myworkdayjobs.com/en-US/Bose_Careers",
+		JobsURL: "https://boseallaboutme.wd503.myworkdayjobs.com/wday/cxs/boseallaboutme/Bose_Careers/jobs",
 		PayLoad: `{
   "appliedFacets": {
     "locations": [

@@ -2,6 +2,7 @@ package process
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/vanshsinhaa/jobscanner/common"
@@ -16,6 +17,25 @@ var (
 	cachedError error
 	onceGetJobs sync.Once
 )
+
+// retagSubBrands relabels postings that belong to a tracked sub-brand of a larger
+// employer, so target-company matching (exact name match on company) can find them.
+// Annapurna Labs roles are posted on amazon.jobs; Slack roles on Salesforce's Workday.
+func retagSubBrands(jobs []common.JobPosting) {
+	for i := range jobs {
+		title := strings.ToLower(jobs[i].JobTitle)
+		switch strings.ToLower(jobs[i].Company) {
+		case "amazon":
+			if strings.Contains(title, "annapurna") {
+				jobs[i].Company = "Annapurna Labs"
+			}
+		case "salesforce":
+			if strings.Contains(title, "slack") {
+				jobs[i].Company = "Slack"
+			}
+		}
+	}
+}
 
 // ScrapeAllJobs hits every scraper, inserts all results into the DB, deduplicates against
 // job_ids.json, and returns only the new jobs.
@@ -40,6 +60,8 @@ func ScrapeAllJobs() ([]common.JobPosting, error) {
 		fmt.Printf("All %s Jobs: %d\n", company, len(jobs))
 		allJobs = append(allJobs, jobs...)
 	}
+
+	retagSubBrands(allJobs)
 
 	// Insert ALL scraped jobs so target section queries return the full current picture.
 	// INSERT OR IGNORE makes this safe — duplicates are silently skipped.

@@ -45,11 +45,14 @@ func GetIBMJobs() ([]common.JobPosting, error) {
 	fmt.Println("Processing: ", "IBM")
 	client := common.GetClient()
 
+	// Scope renamed "careers" -> "careers2" when IBM reindexed their careers search
+	// (the old scope now returns {"errors":[...Invalid value...scopes...]}).
+	// field_keyword_18 (career level) values: "Entry Level", "Internship", "Professional".
 	url := "https://www-api.ibm.com/search/api/v2"
 	payload := `{
   "appId": "careers",
   "scopes": [
-    "careers"
+    "careers2"
   ],
   "query": {
     "bool": {
@@ -60,8 +63,8 @@ func GetIBMJobs() ([]common.JobPosting, error) {
     "bool": {
       "must": [
         {
-          "term": {
-            "field_keyword_18": "Entry Level"
+          "terms": {
+            "field_keyword_18": ["Entry Level", "Internship"]
           }
         },
         {

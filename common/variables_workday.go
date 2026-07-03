@@ -18,8 +18,8 @@ var (
 	Samsung     = "SMSN"
 	Disney      = "DSNY"
 	Sony        = "SONY"
-	Twitter     = "TWTR"
-	CapitalOne  = "CONE"
+	// Twitter = "TWTR" // tenant twitter.wd5/X is gone; X Corp merged into xAI (see sites XAI)
+	CapitalOne = "CONE"
 	// Boeing                  = "BOEG"
 	Bose                    = "BOSE"
 	Snapchat                = "SNPT"
@@ -33,12 +33,13 @@ var (
 	// Blueorigin              = "BLON"
 	Medtronic = "MDTC"
 	Tancent   = "TNCT"
-	Mantech   = "MTCH"
-	SPGlobal  = "SPGL"
-	Adobe     = "ADBE"
-	Comcast   = "CMCT"
-	Redhat    = "REDH"
-	Symbotic  = "SYMC"
+	// Mantech = "MTCH" // mantech.wd1/External board is live but returns 0 postings to the API
+	SPGlobal = "SPGL"
+	Adobe    = "ADBE"
+	Comcast  = "CMCT"
+	Redhat   = "REDH"
+	Symbotic = "SYMC"
+	Zoom     = "ZOOM"
 ) //////////////// Edit here
 
 var WorkdayCompanies = make(map[string]bool)
@@ -56,7 +57,7 @@ func checkAndInitWorkdayCompaniesList() {
 		Samsung,
 		Disney,
 		Sony,
-		Twitter,
+		// Twitter,
 		CapitalOne,
 		// Boeing,
 		Bose,
@@ -71,12 +72,13 @@ func checkAndInitWorkdayCompaniesList() {
 		// Blueorigin,
 		Medtronic,
 		Tancent,
-		Mantech,
+		// Mantech,
 		SPGlobal,
 		Adobe,
 		Comcast,
 		Redhat,
 		Symbotic,
+		Zoom,
 	} /////////////////// Edit here
 
 	for _, value := range values {

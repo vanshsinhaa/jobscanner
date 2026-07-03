@@ -222,10 +222,9 @@ func GetABBJobs() ([]common.JobPosting, error) {
   "global": true,
   "selected_fields": {
     "country": [
-      "USA"
+      "United States of America"
     ],
     "category": [
-      "Digital",
       "Engineering",
       "Information Systems",
       "Research & Development"

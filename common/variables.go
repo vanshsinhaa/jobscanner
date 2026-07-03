@@ -29,6 +29,29 @@ var (
 	Reddit       = "REDT"
 	NetApp       = "NAPP"
 	Nokia        = "NKIA"
+	// Greenhouse boards
+	Stripe    = "STRP"
+	Anthropic = "ANTH"
+	Pinterest = "PINT"
+	Airbnb    = "ARBN"
+	Lyft      = "LYFT"
+	DoorDash  = "DASH"
+	Instacart = "INSC"
+	Coinbase  = "COIN"
+	Robinhood = "RBHD"
+	Square    = "SQRE" // Block board on Greenhouse
+	Asana     = "ASNA"
+	Figma     = "FIGM"
+	XAI       = "XAII" // X (formerly Twitter) merged into xAI
+	// Ashby boards
+	OpenAI = "OPAI"
+	Notion = "NOTN"
+	// Lever boards
+	Palantir = "PLTR"
+	// Other portals
+	PayPal    = "PYPL" // Eightfold PCSX
+	Shopify   = "SHOP" // own site, sitemap-based
+	Atlassian = "ATLS" // iCIMS via atlassian.com endpoint (Trello parent)
 ) //////////////////////// Edit here
 
 var AllCompanies = make(map[string]bool)
@@ -59,6 +82,25 @@ func checkDuplicatesComapnies() {
 		Reddit,
 		NetApp,
 		Nokia,
+		Stripe,
+		Anthropic,
+		Pinterest,
+		Airbnb,
+		Lyft,
+		DoorDash,
+		Instacart,
+		Coinbase,
+		Robinhood,
+		Square,
+		Asana,
+		Figma,
+		XAI,
+		OpenAI,
+		Notion,
+		Palantir,
+		PayPal,
+		Shopify,
+		Atlassian,
 	} ///////////////////////// Edit here
 
 	for _, value := range values {

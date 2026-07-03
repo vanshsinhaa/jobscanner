@@ -8,10 +8,18 @@ import (
 
 // InsertIntoDB inserts job postings into SQLite.
 // Duplicate job_id values are silently ignored via INSERT OR IGNORE.
+// All rows go in a single transaction: one fsync instead of one per row,
+// which turns a ~30-minute insert of ~14k rows into a sub-second commit.
 func InsertIntoDB(jobs []common.JobPosting) error {
 	db := GetDB()
 
-	stmt, err := db.Prepare(`INSERT OR IGNORE INTO jobs
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin insert transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`INSERT OR IGNORE INTO jobs
 		(company, job_id, title, location, posted_on, external_url, role_type)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
@@ -43,6 +51,9 @@ func InsertIntoDB(jobs []common.JobPosting) error {
 		}
 	}
 
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit insert transaction: %w", err)
+	}
 	return nil
 }
 
