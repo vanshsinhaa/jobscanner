@@ -81,21 +81,7 @@ process.ScrapeAllJobs()
 Fork this repo, then create a public repo for the board (e.g. `yourname/jobs`) containing:
 
 - `local_data/job_ids.json` with content `[]`
-- `README.md` with this skeleton:
-
-```markdown
-## 🎓 Intern & New Grad Opportunities
-
-| Company | Role | Location | Apply | Posted |
-| --- | --- | --- | :---: | :---: |
-<!-- intern-rows-end -->
-
-## 💼 All SWE Opportunities
-
-| Company | Role | Location | Apply | Posted |
-| --- | --- | --- | :---: | :---: |
-<!-- general-rows-end -->
-```
+- `README.md` with the two-table skeleton — copy it from **[CONTRIBUTING.md → Data repo skeleton](CONTRIBUTING.md#data-repo-skeleton)** (it lives there because the table writer pattern-matches this README, so an inline example would get job rows injected into it)
 
 ### 2. Point CI at your repos
 

@@ -2,6 +2,24 @@
 
 Thanks for helping keep the board alive. Scrapers rot — companies migrate ATS platforms, rename facets, and delete tenants without warning — so the most valuable contributions are **new company scrapers** and **fixes for broken ones**. Both are usually small.
 
+## Data repo skeleton
+
+When forking your own board (README quickstart step 1), your data repo's `README.md` must contain exactly these two sections — the table writers locate them by header text, separator row, and end anchor:
+
+```markdown
+## 🎓 Intern & New Grad Opportunities
+
+| Company | Role | Location | Apply | Posted |
+| --- | --- | --- | :---: | :---: |
+<!-- intern-rows-end -->
+
+## 💼 All SWE Opportunities
+
+| Company | Role | Location | Apply | Posted |
+| --- | --- | --- | :---: | :---: |
+<!-- general-rows-end -->
+```
+
 ## Dev setup
 
 ```bash
