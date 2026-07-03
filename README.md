@@ -1,193 +1,204 @@
 # jobscanner
 
-Automated SWE internship and job tracker. Scrapes 50+ companies every hour and publishes a live job board to **[vanshsinhaa/jobs](https://github.com/vanshsinhaa/jobs)** — no manual work required.
+[![Scrape Jobs](https://github.com/vanshsinhaa/jobscanner/actions/workflows/scrape.yml/badge.svg)](https://github.com/vanshsinhaa/jobscanner/actions/workflows/scrape.yml)
+[![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](go.mod)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-Built on top of [go-get-jobs](https://github.com/neyaadeez/go-get-jobs) with a full rewrite: SQLite backend, GitHub Actions CI, Discord webhooks, intern/new-grad classification, recency sorting, and a personalized target companies feed.
+**A self-hosting job board.** Scrapes 65+ tech companies every hour on free GitHub Actions, classifies every posting (intern / new grad / general SWE), and publishes a live, deduplicated job board as a GitHub README — plus a personal watchlist feed for the companies *you* care about. No server. No database hosting. No manual work.
+
+**Live board → [vanshsinhaa/jobs](https://github.com/vanshsinhaa/jobs)** · **Personal feed → [bottom of this README](#-my-target-companies)**
+
+Built on top of [go-get-jobs](https://github.com/neyaadeez/go-get-jobs) with a full rewrite: SQLite backend, GitHub Actions CI, generic ATS engines, Discord webhooks, role classification, recency sorting, and target-company tracking.
 
 ---
 
-## Live job board
+## Why this exists
 
-**[github.com/vanshsinhaa/jobs](https://github.com/vanshsinhaa/jobs)**
-
-Updated hourly. Two tables:
-- **Intern & New Grad** — roles classified by title (intern, co-op, new grad, entry level)
-- **All SWE** — everything else
+Job boards aggregate slowly and bury intern/new-grad roles under senior listings. Company career pages are fast but there are dozens of them. jobscanner scrapes the source directly — the actual ATS APIs behind each careers page — every hour, so postings show up on your board minutes after they go live, already classified and sorted newest-first.
 
 ---
 
 ## Features
 
-- **Hourly CI scraping** — GitHub Actions runs on a cron schedule, no server needed
-- **50+ companies** — 23 custom scrapers + 30 Workday companies
-- **Intern/new-grad classification** — word-boundary regex separates intern roles from general SWE
-- **Recency sorting** — newest postings first; jobs older than 14 days filtered out
-- **Deduplication** — `job_ids.json` persists between runs so each job only appears once
-- **Discord notifications** — get a summary embed in Discord every time new jobs drop
-- **Target companies feed** — personal watchlist updated hourly, lives in this repo's README
-- **Watch mode** — daemon flag for local polling with per-job Discord alerts
-- **JSON export** — `jobs.json` published alongside the README for programmatic access
+- **65+ companies, 5 scraper engines** — generic engines for **Greenhouse, Ashby, Lever, and Workday** (adding a company on those platforms is a ~5 line change), plus custom scrapers for Oracle Cloud HCM, Eightfold, Phenom, iCIMS, and bespoke career sites (Google, Apple, Amazon, Meta, …)
+- **Hourly CI scraping** — GitHub Actions cron; your machine never needs to be on
+- **Intern / new-grad classification** — word-boundary regex on titles (`intern`, `co-op`, `new grad`, `entry level`, …) with false-positive guards ("International" ≠ intern)
+- **Target-company watchlist** — a JSON list of companies you care about; their intern/new-grad roles get their own feed, with brand aliasing (`Amex` → American Express, `Twitter` → xAI, `Trello` → Atlassian) and sub-brand detection (Annapurna Labs inside Amazon, Slack inside Salesforce)
+- **Deduplication** — `job_ids.json` persists across runs; every job appears exactly once, ever
+- **Recency windows** — general roles age out after 14 days, intern/new-grad after 60 (programs post early)
+- **Discord notifications** — summary embed per CI run; per-job alerts in watch mode
+- **JSON export** — `jobs.json` published alongside the board for programmatic use
+- **Diagnostic harness** — `go run ./cmd/baseline` tests every scraper in isolation (no DB/README writes) and prints a per-company health report
 
 ---
 
 ## Architecture
 
-Three repos, each with a single responsibility:
-
 ```
-vanshsinhaa/jobscanner   <- you are here
-  scraper code, CI workflow, personal target feed
-
-vanshsinhaa/jobs         <- public output
-  README.md (job board), job_ids.json, jobs.json
-
-vanshsinhaa/jobs-web     <- planned
-  static website reading from jobs.json
+┌─────────────────────────────┐        ┌──────────────────────────────┐
+│  vanshsinhaa/jobscanner     │        │  vanshsinhaa/jobs            │
+│  (this repo)                │  CI    │  (public output)             │
+│                             │ ─────► │                              │
+│  · scraper code (Go)        │ hourly │  · README.md   ← job board   │
+│  · CI workflow              │        │  · jobs.json   ← API-ish     │
+│  · target watchlist config  │        │  · job_ids.json ← dedup      │
+│  · target feed (README)     │        │                              │
+└─────────────────────────────┘        └──────────────────────────────┘
 ```
 
-**How a CI run works:**
+**One CI run, start to finish:**
 
 1. GitHub spins up a fresh Ubuntu runner at the top of every hour
-2. Checks out this repo (`scraper/`) and the jobs repo (`jobs/`)
-3. Runs `go run main.go` — scrapes all companies, deduplicates, classifies roles
-4. Writes the public job board to `jobs/README.md`
-5. Writes the target companies feed to `scraper/README.md` (this file, below)
-6. Commits and pushes both repos
-7. Fires a Discord summary embed via webhook
+2. Checks out this repo (`scraper/`) and the data repo (`jobs/`)
+3. `go run main.go` — every scraper engine runs; results land in a per-run SQLite DB
+4. Titles are classified (`intern` / `new_grad` / `general`) at insert time
+5. Dedup against `job_ids.json`; sub-brands retagged; target aliases resolved
+6. Public board written to `jobs/README.md` (two tables, newest first, row caps)
+7. Target feed written to this repo's README (the section at the bottom of this page)
+8. Both repos committed and pushed; Discord summary fired
 
-Your machine does not need to be on.
+**Scraper engine dispatch:**
+
+```
+process.ScrapeAllJobs()
+├── workday_main/    generic Workday CXS engine ── 28 companies (payload registry)
+└── sites_main/      per-company dispatch
+    ├── greenhouse   generic ─ Stripe, Anthropic, Coinbase, Figma, xAI, +9 more
+    ├── ashby        generic ─ OpenAI, Notion
+    ├── lever        generic ─ Palantir
+    └── custom       Google, Apple, Amazon, Meta, Microsoft (Eightfold PCSX),
+                     Amex (Oracle HCM), Snowflake (Phenom), Atlassian (iCIMS),
+                     Shopify (sitemap), Visa (SmartRecruiters), …
+```
 
 ---
 
-## Setup — fork your own
+## Quick start — fork your own job board
 
 ### 1. Fork and create your data repo
 
-Fork this repo. Then create a new public repo (e.g. `yourname/jobs`) — this is where the job board will be published.
+Fork this repo, then create a public repo for the board (e.g. `yourname/jobs`) containing:
 
-In your `jobs` repo, create `local_data/job_ids.json` containing `[]` and a `README.md` with this structure:
+- `local_data/job_ids.json` with content `[]`
+- `README.md` with this skeleton:
 
 ```markdown
-## Intern & New Grad Opportunities
+## 🎓 Intern & New Grad Opportunities
 
 | Company | Role | Location | Apply | Posted |
 | --- | --- | --- | :---: | :---: |
 <!-- intern-rows-end -->
 
-## All SWE Opportunities
+## 💼 All SWE Opportunities
 
 | Company | Role | Location | Apply | Posted |
 | --- | --- | --- | :---: | :---: |
 <!-- general-rows-end -->
 ```
 
-### 2. Set GitHub Actions secrets
+### 2. Point CI at your repos
 
-In your forked `jobscanner` repo — Settings → Secrets and variables → Actions:
+In `.github/workflows/scrape.yml`, change `repository: vanshsinhaa/jobs` to your data repo. Then in your fork's **Settings → Secrets and variables → Actions** add:
 
 | Secret | What it is |
 |---|---|
-| `JOBS_REPO_TOKEN` | GitHub PAT with **Contents: Read and Write** on your jobs repo. Fine-grained PATs default to read-only — set write explicitly. |
-| `DISCORD_WEBHOOK_URL` | Discord channel webhook URL. Optional — omit to disable notifications. |
+| `JOBS_REPO_TOKEN` | Fine-grained PAT with **Contents: Read and Write** on your data repo (fine-grained PATs default to read-only — set write explicitly) |
+| `DISCORD_WEBHOOK_URL` | Discord channel webhook. Optional — omit to disable notifications |
 
-### 3. Configure your target companies
+### 3. Pick your target companies
 
-Edit `local_data/target_companies.json` — a JSON array of company names:
+Edit `local_data/target_companies.json`:
 
 ```json
-["Google", "Meta", "Stripe", "Anthropic", "Figma"]
+["Google", "Meta", "Stripe", "Anthropic", "Notion", "Figma"]
 ```
 
-The target feed at the bottom of this README updates automatically every CI run.
+Names are matched case-insensitively against scraped company names, with aliases for renamed brands (see `database/target_companies.go`). The target feed at the bottom of this README regenerates every run.
 
-### 4. Enable scheduled runs
+### 4. Enable workflows
 
-Go to the Actions tab of your forked repo. If you see a banner about workflows being disabled on forks, click **Enable workflows**. The cron runs at the top of every UTC hour.
+Actions tab → **Enable workflows** (forks disable them by default). The cron fires at the top of every UTC hour. Done — your board now maintains itself.
 
 ---
 
 ## Running locally
 
 ```bash
-go run main.go
+go run main.go                       # full run: scrape → classify → README + jobs.json
+go run main.go --watch --interval=15m  # daemon mode with per-job Discord alerts
+go run main.go --target-report       # 7-day coverage per target company (spots broken scrapers)
+go run ./cmd/baseline                # test every scraper in isolation, no side effects
 ```
 
-Reads state from `local_data/`, writes to `README.md`. Set env vars to redirect output in CI or to a separate data directory:
+Local runs read and write `local_data/` and this repo's `README.md` — CI state lives in the data repo, so local experiments can't corrupt production dedup state.
 
-```bash
-DATA_DIR=/path/to/jobs/local_data README_PATH=/path/to/jobs/README.md go run main.go
-```
-
-### Watch mode
-
-Polls on a configurable interval and sends per-job Discord alerts for new intern roles:
-
-```bash
-go run main.go --watch --interval=15m
-```
-
-### Target company report
-
-Prints a coverage table showing which target companies returned jobs in the last 7 days — useful for spotting broken scrapers:
-
-```bash
-go run main.go --target-report
-```
-
----
-
-## Configuration
+### Configuration
 
 | Env var | Default | Purpose |
 |---|---|---|
 | `DATA_DIR` | `local_data` | Directory for `job_ids.json`, `jobs.db`, `jobs.json` |
 | `README_PATH` | `README.md` | Where the public intern/SWE tables are written |
-| `TARGET_README_PATH` | `README.md` | Where the target companies feed is written |
-| `DISCORD_WEBHOOK_URL` | _(empty, disabled)_ | Discord webhook for run summaries and watch-mode alerts |
+| `TARGET_README_PATH` | `README.md` | Where the target-companies feed is written |
+| `TARGET_COMPANIES_FILE` | `local_data/target_companies.json` | Watchlist location |
+| `DISCORD_WEBHOOK_URL` | _(empty = disabled)_ | Webhook for run summaries / watch alerts |
+
+Copy `.env.example` to `.env` for local overrides.
+
+---
+
+## Adding a company
+
+**On Greenhouse, Ashby, or Lever?** It's a three-step, ~5-line change — find the board token, add a company code, add a one-line wrapper + dispatch case. Full walkthrough with copy-paste snippets in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+
+**On Workday?** Copy any file in `workday/`, point it at the tenant's CXS endpoint, and register the payload. Facet IDs come from the careers site's network tab.
+
+**Something custom?** See the endpoint-discovery playbook in [CONTRIBUTING.md](CONTRIBUTING.md) — most "custom" career sites are one of six ATS platforms wearing a costume.
+
+Then verify with `go run ./cmd/baseline` — your company should appear with a non-zero count.
 
 ---
 
 ## Project structure
 
 ```
-go-get-jobs/
+jobscanner/
 ├── main.go                      entry point; --watch and --target-report flags
-├── common/                      JobPosting struct, HTTP client (resty, 3 retries + backoff)
-├── common_const/                env-var-backed path functions
-├── database/                    SQLite layer (modernc.org/sqlite, pure Go, no CGO)
-│   ├── init.go                  schema: jobs + target_companies tables
-│   ├── insert_data.go           INSERT OR IGNORE with role classification at insert time
-│   ├── classify.go              intern / new_grad / general by title keyword (word-boundary regex)
-│   ├── export.go                writes jobs.json after each run
-│   └── target_companies.go      target feed queries and 7-day coverage report
-├── process/                     orchestration, dedup via job_ids.json, sync.Once CI cache
-├── readme/                      README writers
-│   ├── process_readme.go        two-table writer (intern + general)
-│   ├── target_section.go        target companies section writer
-│   └── date.go                  posting date parsing and display formatting
-├── notify/                      Discord webhooks
-│   └── discord.go               SendCISummary (CI) + SendWatchAlert (watch mode)
-├── sites/                       23 custom scrapers
-├── workday/                     30 Workday company configs
-├── workday_main/                generic Workday CXS POST scraper
-└── local_data/
-    ├── target_companies.json    your personal watchlist — edit this
-    ├── job_ids.json             dedup state, persists between CI runs
-    └── jobs.json                JSON export of all current jobs
+├── cmd/baseline/                isolated per-scraper diagnostic harness
+├── common/                      JobPosting struct, company codes, HTTP client (retries + backoff)
+├── common_const/                env-var-backed path config
+├── database/                    SQLite layer (modernc.org/sqlite — pure Go, no CGO)
+│   ├── classify.go              intern / new_grad / general title classification
+│   ├── insert_data.go           single-transaction batch insert
+│   └── target_companies.go      watchlist queries + brand alias table
+├── process/                     orchestration, dedup, sub-brand retagging
+├── readme/                      README table writers (public board + target feed)
+├── notify/                      Discord webhook embeds
+├── sites/                       custom scrapers + generic Greenhouse/Ashby/Lever engines
+├── sites_main/                  company → scraper dispatch
+├── workday/                     one payload config per Workday company
+├── workday_main/                generic Workday CXS engine (pagination, retries)
+├── plan/tracker.md              per-company scraper status ledger + debugging playbook
+└── local_data/                  local state (CI uses the data repo instead)
 ```
 
 ---
 
-## Known scraper issues
+## Scraper health
 
-| Company | Issue |
-|---|---|
-| Microsoft | TLS certificate mismatch on `gcsservices.careers.microsoft.com` |
-| Apple | CSRF token required — returns 0 jobs |
-| Tesla | 403 Access Denied |
-| Splunk | Returns HTML instead of JSON |
+Current per-company status — including root-cause history for every outage and the re-diagnosis playbook — lives in **[plan/tracker.md](plan/tracker.md)**.
 
-Pull requests welcome.
+Known-blocked (documented, not bugs): **Tesla** (Akamai bot wall — needs a real browser), **LinkedIn** (no public job API). Everything else returns live postings as of the last audit.
+
+---
+
+## Contributing
+
+Broken scraper? Company you want tracked? PRs are very welcome — most additions are a handful of lines thanks to the generic engines. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the scraper-writing guide, debugging playbook, and PR checklist. Bug reports: [open an issue](../../issues/new/choose).
+
+## License
+
+[MIT](LICENSE). Job posting data belongs to the respective companies; this tool only republishes titles, locations, and links to official application pages. Scrapers are rate-limited and hit public, unauthenticated endpoints.
 
 ---
 

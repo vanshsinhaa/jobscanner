@@ -2,3 +2,5 @@
 ./local_data
 local_data/jobs.db
 local_data/jobs.db-journal
+.DS_Store
+.env.local
