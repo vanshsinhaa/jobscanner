@@ -140,6 +140,11 @@ func GetTargetCompanyJobs(targets []string) ([]common.JobPosting, error) {
 		if dbRoleType == "intern" && ClassifyRole(j.JobTitle) == "general" {
 			continue
 		}
+		// Drop postings for recruiting cycles that have already passed
+		// (e.g. "Summer 2026 Intern" still listed during the 2027 cycle).
+		if IsStaleCycle(j.JobTitle) {
+			continue
+		}
 		j.RoleType = dbRoleType
 		jobs = append(jobs, j)
 	}

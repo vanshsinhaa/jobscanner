@@ -1,5 +1,7 @@
 # Scraper Status Tracker
 
+> **2026-07-03 — 2027 cycle readiness:** no scraper uses year-scoped queries or facets, so 2027 postings flow in automatically. `database/classify.go` gained cycle-year classification (`Class of 2027`, `2027 Grads`, `Graduate Software Engineer`), `CycleYear()` extraction, and `IsStaleCycle()` — past-cycle postings (title year < current year) are filtered from the board, kept rows, and the target feed at display time (they stay in the DB/job_ids so reposts don't resurface them). Covered by `database/classify_test.go`.
+
 Last full audit: **2026-07-03** (local baseline run of every registered scraper).
 
 ## Summary

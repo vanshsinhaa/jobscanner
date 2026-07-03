@@ -205,6 +205,11 @@ func parseExistingRows(content, sectionHeader, endAnchor string, seen map[string
 		if !isRowInAllowedMonth(trimmed) {
 			continue
 		}
+		// Age out rows whose title names a past recruiting cycle (kept-rows
+		// survive scraper outages, so they need the same cycle filter as new rows).
+		if database.IsStaleCycle(extractTitle(trimmed)) {
+			continue
+		}
 		link := extractLink(trimmed)
 		if link != "" && seen[link] {
 			continue
@@ -243,6 +248,9 @@ func parseAndReclassifyGeneralRows(content string, seen map[string]bool) (intern
 			continue
 		}
 		if !isRowInAllowedMonth(trimmed) {
+			continue
+		}
+		if database.IsStaleCycle(extractTitle(trimmed)) {
 			continue
 		}
 		link := extractLink(trimmed)
@@ -297,6 +305,11 @@ func appendJobsToReadme(jobPostings []common.JobPosting) error {
 	cutoffIntern := time.Now().AddDate(0, 0, -maxInternJobAgeDays)
 	var filtered []common.JobPosting
 	for _, job := range jobPostings {
+		// Cycle filter: "Summer 2026 Intern" postings left up during the 2027
+		// cycle are closed programs — drop them regardless of posting date.
+		if database.IsStaleCycle(job.JobTitle) {
+			continue
+		}
 		t, ok := parsePostingDate(job.PostedOn)
 		if !ok {
 			filtered = append(filtered, job)

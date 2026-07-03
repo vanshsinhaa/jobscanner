@@ -23,7 +23,8 @@ Job boards aggregate slowly and bury intern/new-grad roles under senior listings
 
 - **65+ companies, 5 scraper engines** — generic engines for **Greenhouse, Ashby, Lever, and Workday** (adding a company on those platforms is a ~5 line change), plus custom scrapers for Oracle Cloud HCM, Eightfold, Phenom, iCIMS, and bespoke career sites (Google, Apple, Amazon, Meta, …)
 - **Hourly CI scraping** — GitHub Actions cron; your machine never needs to be on
-- **Intern / new-grad classification** — word-boundary regex on titles (`intern`, `co-op`, `new grad`, `entry level`, …) with false-positive guards ("International" ≠ intern)
+- **Intern / new-grad classification** — word-boundary regex on titles (`intern`, `co-op`, `new grad`, `entry level`, `Class of 2027`, `2027 Grads`, …) with false-positive guards ("International" ≠ intern)
+- **Cycle-aware** — recruiting-cycle years are parsed from titles: postings for past cycles ("Summer 2026 Intern" still up during the 2027 cycle) are aged off the board automatically, so each new hiring season starts clean
 - **Target-company watchlist** — a JSON list of companies you care about; their intern/new-grad roles get their own feed, with brand aliasing (`Amex` → American Express, `Twitter` → xAI, `Trello` → Atlassian) and sub-brand detection (Annapurna Labs inside Amazon, Slack inside Salesforce)
 - **Deduplication** — `job_ids.json` persists across runs; every job appears exactly once, ever
 - **Recency windows** — general roles age out after 14 days, intern/new-grad after 60 (programs post early)
