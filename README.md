@@ -76,6 +76,49 @@ process.ScrapeAllJobs()
 
 ## Quick start — fork your own job board
 
+### 🤖 Option A: make Claude do all of it
+
+Have an agentic coding tool ([Claude Code](https://claude.com/claude-code), Cursor, etc.) with the `gh` CLI authenticated? Paste this prompt into a fresh session and it will run the entire setup below — fork, data repo, CI rewiring, secrets, first run, verification:
+
+````text
+Set up my own self-hosting job board from https://github.com/vanshsinhaa/jobscanner.
+Assume `gh` CLI (authenticated as me), git, and Go are installed; check all three
+first and stop to tell me if one is missing.
+
+1. Ask me two questions before touching anything: (a) a name for my public data
+   repo (default "jobs"), (b) which companies I want on my personal watchlist
+   (default: keep the list already in local_data/target_companies.json).
+2. Fork vanshsinhaa/jobscanner to my account with gh and clone my fork.
+3. Create the public data repo under my account. Commit to it:
+   - local_data/job_ids.json containing exactly: []
+   - README.md containing the two-table skeleton copied VERBATIM from my fork's
+     CONTRIBUTING.md, section "Data repo skeleton" (headers, separator rows, and
+     HTML anchor comments must match exactly — the table writers pattern-match them).
+4. In my fork, edit .github/workflows/scrape.yml: change
+   "repository: vanshsinhaa/jobs" to my data repo. Update
+   local_data/target_companies.json to my watchlist from step 1.
+5. Secrets — you cannot create GitHub PATs, so walk me through it: I create a
+   fine-grained PAT at https://github.com/settings/personal-access-tokens/new
+   (repository access: ONLY my data repo; permissions: Contents = Read and write).
+   When I paste it to you, run: gh secret set JOBS_REPO_TOKEN --repo <me>/jobscanner
+   Then ask if I want Discord notifications; if yes, set DISCORD_WEBHOOK_URL the
+   same way, otherwise skip.
+6. Sanity-check the scrapers locally: go build ./... then go run ./cmd/baseline.
+   A few permanently blocked companies (Tesla, LinkedIn) are expected — anything
+   else in the ZERO OR ERROR section, investigate per plan/tracker.md before continuing.
+7. Commit and push my fork's changes. Enable workflows (gh workflow enable, or tell
+   me to click "Enable workflows" in the Actions tab if the CLI can't), then trigger
+   the first run: gh workflow run "Scrape Jobs" and watch it with gh run watch.
+8. When the run succeeds, verify: my data repo README has job tables with rows, and
+   my fork's README has a populated "My Target Companies" section. Send me both links.
+
+Debug failures yourself before asking me. Never push to vanshsinhaa's repos.
+````
+
+The agent will stop twice for input: your repo/watchlist choices at the start, and the PAT paste in step 5 (agents can't create tokens for you — that's the one thing that stays manual).
+
+### ✍️ Option B: manual setup
+
 ### 1. Fork and create your data repo
 
 Fork this repo, then create a public repo for the board (e.g. `yourname/jobs`) containing:
